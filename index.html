@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World Dominion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Russo+One&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+</head>
+<body>
+  <canvas id="globe" hidden></canvas>
+  <svg id="map" aria-label="World map" hidden></svg>
+  <svg id="fog" aria-hidden="true" hidden></svg>
+  <svg id="marks" aria-hidden="true" hidden></svg>
+  <svg id="hover" aria-hidden="true" hidden></svg>
+  <svg id="overlay" aria-hidden="true" hidden></svg>
+  <div id="scan" aria-hidden="true"></div>
+  <div id="flash" aria-hidden="true"></div>
+  <div id="edgeAlerts"></div>
+
+  <!-- Top bar -->
+  <header id="hud" hidden>
+    <div class="hud-block hud-empire">
+      <span id="hudFlag"></span>
+      <button id="hudPerk" class="perk-chip" title=""></button>
+      <div class="hud-id"><span class="hud-title" id="hudName"></span><span class="hud-sub" id="hudSub"></span></div>
+    </div>
+    <div class="hud-block stat hud-money" title="Treasury and income per second">
+      <span class="k">Treasury <b id="hudBoost" class="boost" hidden></b></span>
+      <span class="v"><i class="coin"></i><span id="hudMoney"></span><small id="hudIncome"></small></span>
+    </div>
+    <div class="hud-block stat hud-nations" title="Nations you control"><span class="k">Nations</span><span class="v"><i class="ic">🏳</i><span id="hudCountries"></span></span></div>
+    <div class="hud-block stat hud-control" title="Share of world economic power you control">
+      <span class="k">World control <small id="hudGoal"></small></span>
+      <div class="bar"><div id="hudBar"></div><div class="goal" id="hudGoalMark"></div></div>
+      <span class="v" id="hudShare"></span>
+    </div>
+    <div class="hud-block stat hud-time" title="Game time"><span class="k" id="hudTimeLabel">Time</span><span class="v"><i class="ic">⏱</i><span id="hudTime"></span></span></div>
+    <div class="hud-speed" role="group" aria-label="Game speed">
+      <button data-speed="0" title="Pause (Space)">❚❚</button>
+      <button data-speed="1">1×</button>
+      <button data-speed="2">2×</button>
+      <button data-speed="4">4×</button>
+    </div>
+    <div class="hud-actions">
+      <button id="btnRoom" class="hbtn" hidden title="Room code: click to copy the invite link for friends who want to join or rejoin">🌐 <span id="hudCode"></span></button>
+      <button id="btnNukes" class="hbtn nukes" hidden title="Nuclear strike (N)">☢ <span id="hudNukes"></span></button>
+      <button id="btnAuto" class="hbtn auto" title="Autopilot: how your nations look after themselves (P)">🛡 <span class="lbl">Autopilot</span> <b id="hudAuto"></b></button>
+      <button id="btnTech" class="hbtn shop" title="Shop: research and supplies (U)">🛒 <span class="lbl">Shop</span></button>
+      <button id="btnDiplomacy" class="hbtn" title="Diplomacy (D)">🤝 <span class="lbl">Diplomacy</span></button>
+      <button id="btnSave" class="hbtn icon" title="Save game">💾</button>
+      <button id="btnSound" class="hbtn icon" title="Sound on/off">🔊</button>
+      <button id="btnHelp" class="hbtn icon" title="Controls (H)">?</button>
+      <button id="btnMenu" class="hbtn icon" title="Menu (Esc)">☰</button>
+    </div>
+  </header>
+
+  <aside id="leaderboard" class="frame" hidden></aside>
+  <div id="alerts" class="frame" hidden></div>
+  <aside id="panel" class="frame" hidden></aside>
+  <aside id="bounties" class="frame" hidden></aside>
+  <div id="minimap" hidden><canvas title="Click to jump there"></canvas><span class="mm-glass"></span><span class="mm-label">Radar</span></div>
+  <div id="mission" class="frame" hidden></div>
+  <div id="banner" hidden><b id="bannerText"></b><span id="bannerSub"></span></div>
+  <div id="ticker" hidden><span class="tk-tag">World news</span><div class="tk-body"><span class="tk-text"></span></div></div>
+  <div id="log" aria-live="polite"></div>
+  <div id="chatBox" hidden>
+    <input id="chatInput" type="text" maxlength="200" autocomplete="off" placeholder="Message everyone · Enter to send · Esc to close" aria-label="Chat message">
+  </div>
+  <div id="toasts"></div>
+  <div id="modeHint" hidden></div>
+  <div id="pauseBanner" hidden><b>Paused</b><span id="pauseText"></span></div>
+  <div id="tooltip" hidden></div>
+
+  <div id="loading" class="screen center">
+    <div class="loading-card">
+      <h1 class="logo">WORLD <span>DOMINION</span></h1>
+      <div class="loading-bar"><div></div></div>
+      <p id="loadingText">Establishing satellite uplink…</p>
+    </div>
+  </div>
+
+  <!-- Main menu -->
+  <section id="menu" class="frame" hidden>
+    <button id="btnMenuSettings" class="hbtn icon menu-gear" title="Settings">⚙</button>
+    <h1 class="logo">WORLD <span>DOMINION</span></h1>
+    <p class="tagline">Global conflict command · Raise armies, build fleets, make and break alliances, and conquer the planet.</p>
+
+    <div id="menuMain">
+    <div id="careerBox" class="box career"></div>
+
+    <div id="savesBox" class="box" hidden>
+      <h3>Continue</h3>
+      <div id="savesList"></div>
+    </div>
+
+    <div class="box">
+      <h3>New war</h3>
+      <!-- The setup block moves into the lobby during multiplayer, so solo and online share one set of controls. -->
+      <div id="setupSlot">
+        <div id="setupBlock">
+          <div class="field">
+            <span>Your nation <em>(or click the map)</em></span>
+            <div class="row">
+              <select id="selCountry" aria-label="Your nation"></select>
+              <button id="btnRandom" class="ghost" title="Random nation">🎲</button>
+            </div>
+            <small id="countryInfo"></small>
+          </div>
+
+          <div id="rulesBlock">
+            <div class="field">
+              <span>Scenario</span>
+              <div class="carousel" id="scenarioCards"></div>
+              <div class="car-dots" id="scenarioDots"></div>
+              <small id="scenarioInfo"></small>
+            </div>
+
+            <div class="field">
+              <span>Game length</span>
+              <div class="modes" id="modeCards"></div>
+            </div>
+
+            <label class="set-row compact">
+              <div><b>🌫 Fog of war</b><span>Enemy troops stay hidden until your land, armies or aircraft are close.</span></div>
+              <input type="checkbox" class="switch" id="fogToggle">
+            </label>
+
+            <div class="field" id="teamsField" hidden>
+              <span>Human players</span>
+              <div class="seg" id="teamsSeg">
+                <button data-teams="ffa" title="Everyone fights for themselves">⚔ Free-for-all</button>
+                <button data-teams="coop" title="Humans are permanent allies and win together">🤝 Co-op vs AI</button>
+              </div>
+            </div>
+
+            <div class="field two">
+              <label id="rivalsField">
+                <span>AI rivals: <b id="rivalsVal"></b></span>
+                <input type="range" id="rivals" min="1" max="20" step="1">
+              </label>
+              <label>
+                <span>Win at</span>
+                <select id="victory">
+                  <option value="50">50% of the world</option>
+                  <option value="75">75% of the world</option>
+                  <option value="90">90% of the world</option>
+                  <option value="100">100%, total domination</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="field">
+              <span>AI difficulty</span>
+              <div class="seg" id="diffSeg">
+                <button data-diff="easy">Easy</button>
+                <button data-diff="normal">Normal</button>
+                <button data-diff="hard">Hard</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnStart" class="primary big">⚔ Start the war</button>
+    </div>
+
+    <div class="box">
+      <h3>Play with friends</h3>
+      <label class="field">
+        <span>Your name</span>
+        <input id="mpName" type="text" maxlength="20" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="mp-actions">
+        <button id="btnHost" class="primary">🌐 Host a game</button>
+        <div class="join-row">
+          <input id="mpCode" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ROOM CODE" aria-label="Room code">
+          <button id="btnJoin" class="ghost">Join</button>
+        </div>
+      </div>
+      <small class="note">Host a game, then send your friends the invite link from the lobby. It opens the game in their browser with your room code filled in.</small>
+    </div>
+
+    <details class="box howto">
+      <summary>How to play</summary>
+      <ul>
+        <li><b>Left-click</b> one of your countries to select it. <b>Right-click</b> any other country to send troops. Hover a target first to see the route, the travel time and your odds.</li>
+        <li>Buy units in the side panel. Hold <b>Shift</b> to buy 5. Hotkeys: <b>Q</b> infantry, <b>W</b> tanks, <b>E</b> artillery, <b>R</b> warships, <b>T</b> aircraft, <b>Y</b> missiles.</li>
+        <li><b>1–4</b> sets how much of the army to send (25% to all). <b>G</b> lets you pick a target with left-click.</li>
+        <li><b>A</b> air strike (aircraft fly 3,500 km, bomb, then return). <b>B</b> artillery bombards a neighbor nonstop. <b>M</b> fires a missile up to 6,000 km.</li>
+        <li>Warships make sea crossings faster and smash enemy landings. Without ships, troops landing from the sea fight at a penalty.</li>
+        <li>Big economies (USA, China, Germany…) pay more and count more toward victory. Grab them!</li>
+        <li>Every nation has a <b>superpower</b>, like Russian winter or island fortresses. Yours is the icon next to your flag.</li>
+        <li><b>Capitals</b> (★) defend harder. Take an enemy capital to loot half its treasury and split its empire in a civil war. Guard yours!</li>
+        <li>Armies that win battles earn up to 3 <b>veteran stars</b> and fight harder. Fresh recruits dilute them.</li>
+        <li><b>U</b> opens the Shop: research that applies instantly, up to the Nuclear Program, and ready-made forces delivered to your capital. <b>N</b> fires a nuke, but the whole world will turn on you.</li>
+        <li>Your nations raise free <b>militia</b> (🛡) that guard them. The <b>Autopilot</b> (P) spends part of your income on defenders where attacks are coming, moves idle troops to threatened borders and strikes back at lost nations.</li>
+        <li>Complete <b>contracts</b> (bottom right) for cash. Watch the world news for disasters, revolutions, arms deals and coups.</li>
+        <li>With <b>fog of war</b> on, enemy troops show as ? until your land, armies or aircraft are close.</li>
+        <li><b>Space</b> pauses. Scroll to zoom, drag to pan. Open <b>Diplomacy</b> to offer peace or alliances. Allies let your armies pass through.</li>
+        <li>Red dashed routes and arrows at the screen edge warn you about incoming attacks. Click an arrow to jump there.</li>
+        <li>Online: the host runs the game. Press <b>Enter</b> to chat. If someone drops out, the AI looks after their empire until they rejoin with the same name.</li>
+        <li>Earn experience and medals in every war to rank up and unlock empire colors and titles. Press <b>H</b> for all controls.</li>
+      </ul>
+    </details>
+    </div>
+
+    <!-- Multiplayer lobby -->
+    <div id="menuLobby" hidden>
+      <div class="box room">
+        <h3 id="lobbyTitle">Room code</h3>
+        <div class="code-row">
+          <span id="lobbyCode"></span>
+          <button id="btnCopyCode" class="ghost">Copy</button>
+        </div>
+        <button id="btnCopyInvite" class="primary wide">🔗 Copy invite link</button>
+        <small id="lobbyHint" class="note"></small>
+      </div>
+      <div class="box">
+        <h3>Players <span id="lobbyCount"></span></h3>
+        <div id="lobbyPlayers"></div>
+      </div>
+      <div class="box">
+        <h3>Your nation and the rules</h3>
+        <div id="lobbySetupSlot"></div>
+      </div>
+      <button id="btnLobbyStart" class="primary big">Start the war</button>
+      <p id="lobbyWait" class="wait" hidden>Waiting for the host to start the war…</p>
+      <button id="btnLeaveLobby" class="ghost wide">Leave room</button>
+    </div>
+  </section>
+
+  <div id="modal" hidden><div class="modal-card frame" id="modalCard"></div></div>
+  <!-- Yes/no questions sit above everything, even an open window. -->
+  <div id="confirm" hidden>
+    <div class="confirm-card frame" role="alertdialog" aria-labelledby="confirmTitle">
+      <h2 class="ribbon" id="confirmTitle"></h2>
+      <p id="confirmText"></p>
+      <div class="foot"><button class="danger" id="confirmYes"></button><button class="ghost" id="confirmNo"></button></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/flags.js"></script>
+  <script src="js/sealanes.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/director.js"></script>
+  <script src="js/autopilot.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/news.js"></script>
+  <script src="js/replay.js"></script>
+  <script src="js/minimap.js"></script>
+  <script src="js/globe.js"></script>
+  <script src="js/guide.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
