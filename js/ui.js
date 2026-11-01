@@ -4,7 +4,7 @@ window.WD = window.WD || {};
 
 WD.UI = (() => {
   const Game = WD.Game, Net = WD.Net, Map = WD.Map, Globe = WD.Globe, Sound = WD.Sound, Guide = WD.Guide, U = Game.U;
-  const Progress = WD.Progress, News = WD.News, Replay = WD.Replay, Minimap = WD.Minimap;
+  const Progress = WD.Progress, News = WD.News, Replay = WD.Replay, Minimap = WD.Minimap, Bootcamp = WD.Bootcamp;
   const $ = id => document.getElementById(id);
   const SAVE_PREFIX = "worldDominion.save.";
   const NAME_KEY = "worldDominion.playerName";
@@ -124,6 +124,28 @@ WD.UI = (() => {
       onAlert: c => Map.focus(c),
     });
     News.init($("ticker"), c => Map.focus(c));
+    Bootcamp.init(world, {
+      ctx: () => ({ G: Game.state, me: Game.state.empires[S.me], selected: S.selected, hover: S.hover, frac: S.frac, modal: S.modal, action: S.action }),
+      beacon: c => Map.beacon(c),
+      // With a zoom level the camera always moves there; without one it only moves if c is off screen.
+      show: (c, k) => { if (k) Map.focus(c, k); else if (!Map.onScreen(c)) Map.focus(c, Math.max(Map.zoomK, 3)); },
+      // The one contract Boot Camp hands out.
+      contract: c => {
+        const G = Game.state;
+        G.bounties.push({ id: G.nextId++, for: S.me, kind: "take", target: c, icon: "🎯", title: `Take ${nameOf(c)}`, reward: 300, start: G.time, expires: G.time + 900 });
+        S.bountyKey = "";
+      },
+      sound: name => Sound.play(name),
+      // Only the first completion pays experience.
+      complete: first => {
+        Guide.finish();
+        const xp = first ? Progress.bank("bootcamp", 200).add : 0;
+        toast(xp ? `🎖 Boot Camp complete! +${xp} XP` : "🎖 Boot Camp complete!", "good");
+        return xp;
+      },
+      finish: finishBootcamp,
+      invite: () => (/^[A-Z0-9]{6}$/.test($("mpCode").value.trim().toUpperCase()) ? $("mpCode").value.trim().toUpperCase() : ""),
+    });
     Minimap.init(world, {
       view: () => Map.view(),
       colorOf: c => {
@@ -240,7 +262,10 @@ WD.UI = (() => {
       if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); return; }
       Map.flash(c);
       if (a === "move") { Sound.play("march"); if (hostile) Guide.event("attack"); }
-      if (a === "air") { Sound.play("jet"); if (!r.rebase) Guide.event("support"); else toast(`Aircraft are flying to ${nameOf(c)}.`); }
+      if (a === "air") {
+        Sound.play("jet");
+        if (!r.rebase) { Guide.event("support"); Bootcamp.event("air"); } else toast(`Aircraft are flying to ${nameOf(c)}.`);
+      }
       if (a === "missile") { Sound.play("missile"); Guide.event("support"); }
       if (a === "bombard") {
         toast(r.stopped ? `Artillery in ${nameOf(from)} stopped firing.` : `Artillery in ${nameOf(from)} is bombarding ${nameOf(c)}.`);
@@ -323,6 +348,7 @@ WD.UI = (() => {
       if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); return; }
       Sound.play("buy");
       Guide.event("buy");
+      Bootcamp.event("buy", { type, n });
       renderPanel();
       const card = $("panel").querySelector(`.unit-card[data-t="${type}"]`);
       if (card) { card.classList.remove("got"); card.getBoundingClientRect(); card.classList.add("got"); }
@@ -578,6 +604,7 @@ WD.UI = (() => {
     const threats = Map.refresh();
     renderAlerts(threats);
     Minimap.draw();
+    Bootcamp.tick();
     if (S.modal === "research") updateResearch();
     Guide.check(Game.cache.owned[S.me]?.length || 0);
     // Keep the hovered country's tooltip and route preview current as the war moves on.
@@ -611,7 +638,7 @@ WD.UI = (() => {
     $("hudShare").textContent = share.toFixed(1) + "%";
     $("hudBar").style.width = Math.min(100, share) + "%";
     $("hudTime").textContent = fmtTime(G.time);
-    const grace = WD.MODES[G.settings.mode].grace - G.time;
+    const grace = G.settings.tutorial ? 0 : WD.MODES[G.settings.mode].grace - G.time;
     if (S.graceLeft > 0 && grace <= 0) Sound.play("ceasefire");
     S.graceLeft = grace;
     const label = $("hudTimeLabel");
@@ -976,6 +1003,7 @@ WD.UI = (() => {
 
   function showMenu() {
     if (online()) Net.leave();
+    if (S.bootcamp) { S.bootcamp = false; Bootcamp.stop(); }
     S.phase = "menu";
     S.me = 0;
     leaveGameScreen();
@@ -995,9 +1023,51 @@ WD.UI = (() => {
       S.setup.country = good[Math.floor(Math.random() * good.length)].id;
     }
     renderCareer();
+    renderBootBox();
     renderSetup();
     renderSaves();
     Globe.focus(S.setup.country);
+  }
+
+  // ---------- Boot Camp ----------
+  function renderBootBox() {
+    const done = Bootcamp.status() === "done";
+    $("bootBox").innerHTML = `<h3>Boot Camp</h3><div class="boot-row"><span class="boot-ic">🎓</span>
+      <span>${done ? "Training complete. Replay it any time." : "<b>New here?</b> Learn the controls in a 3-minute training war."}</span>
+      <button class="${done ? "ghost" : "primary"}" data-boot="1">${done ? "Replay" : "Start"}</button></div>`;
+  }
+
+  function startBootcamp() {
+    if (online()) Net.leave();
+    const france = world.byName.get("France").id;
+    S.me = 0;
+    S.bootcamp = true;
+    S.shopTab = "t0";
+    S.frac = 0.5;
+    Game.newGame(world, {
+      mode: "standard", difficulty: "easy", rivals: 2, victory: 100, scenario: "classic", fog: false, tutorial: true,
+      playerCountry: france, playerColor: Progress.color(), playerTitle: Progress.title(),
+    });
+    enterGame();
+    Map.focus(france, 3.4);
+    Bootcamp.start();
+  }
+
+  // First war on this browser? Offer Boot Camp before the real thing (it's on the menu too).
+  function offerBootcamp(then) {
+    if (Bootcamp.status()) { then(); return; }
+    confirmBox({ title: "Boot Camp", text: "First time here? Learn the controls in a 3-minute training war before the real thing.", yes: "🎓 Boot Camp", no: "Skip", tone: "primary" })
+      .then(yes => {
+        if (yes) startBootcamp();
+        else { Bootcamp.skip(); then(); }
+      });
+  }
+
+  // How Boot Camp ends: straight into a real war, into the room the player was invited to, or the menu.
+  function finishBootcamp(how) {
+    showMenu();
+    if (how === "war") startGame();
+    if (how === "join") joinGame();
   }
 
   // Scenarios as a level-select carousel: the chosen one in the middle, its neighbors peeking in.
@@ -1185,6 +1255,7 @@ WD.UI = (() => {
   function startGame() {
     const st = S.setup;
     if (st.country < 0) { toast("Pick a nation first.", "bad"); return; }
+    if (!Bootcamp.status()) { offerBootcamp(startGame); return; }
     if (st.scenario === "underdog" && world.countries[st.country].value >= WD.UNDERDOG_MAX) {
       toast(`Underdog needs a small nation (income under +$${WD.UNDERDOG_MAX}/s). Pick one, or press 🎲 for a random one.`, "bad");
       Sound.play("error");
@@ -1241,7 +1312,7 @@ WD.UI = (() => {
     S.selected = -1;
     S.panelKey = "";
     S.proposalKey = "";
-    S.graceLeft = WD.MODES[G.settings.mode].grace - G.time;
+    S.graceLeft = G.settings.tutorial ? 0 : WD.MODES[G.settings.mode].grace - G.time;
     S.vision = null;
     S.overInfo = null;
     S.offerKey = S.bountyKey = "";
@@ -1267,17 +1338,20 @@ WD.UI = (() => {
     $("hudPerk").title = `${perk.name}: ${perk.desc}`;
     $("hudName").textContent = me.name;
     const mode = WD.MODES[G.settings.mode].name;
-    $("hudSub").textContent = online() ? `${isHost() ? "Host" : "Online"} · ${mode}` : `${mode} · ${WD.DIFFICULTY[G.settings.difficulty].name}`;
+    $("hudSub").textContent = S.bootcamp ? "Boot Camp · Training"
+      : online() ? `${isHost() ? "Host" : "Online"} · ${mode}` : `${mode} · ${WD.DIFFICULTY[G.settings.difficulty].name}`;
     $("hudGoal").textContent = `· ${G.settings.teams === "coop" && G.settings.multiplayer ? "team " : ""}goal ${G.settings.victory}%`;
     $("hudGoalMark").style.left = `calc(${Math.min(100, G.settings.victory)}% - 1px)`;
-    $("btnSave").hidden = isClient();
+    $("btnSave").hidden = isClient() || S.bootcamp;
     $("btnRoom").hidden = !isHost();
     $("hudCode").textContent = Net.code || "";
     Map.recolorAll();
     select(-1);
     const home = Game.cache.owned[S.me].includes(me.capital) ? me.capital : Game.cache.owned[S.me][0];
     if (home !== undefined) Map.beacon(home);
-    if (settings.tips) Guide.start({ onComplete: () => Sound.play("capture") });
+    // Boot Camp has its own coach, so the first-war missions stay out of its way.
+    if (settings.tips && !S.bootcamp) Guide.start({ onComplete: () => Sound.play("capture") });
+    else Guide.stop();
     refreshUi();
   }
 
@@ -1289,6 +1363,7 @@ WD.UI = (() => {
 
   async function hostGame() {
     if (S.busy) return;
+    if (!Bootcamp.status()) { offerBootcamp(hostGame); return; }
     S.busy = true;
     toast("Opening a room…");
     try {
@@ -1304,6 +1379,7 @@ WD.UI = (() => {
 
   async function joinGame() {
     if (S.busy) return;
+    if (!Bootcamp.status()) { offerBootcamp(joinGame); return; }
     S.busy = true;
     toast("Connecting…");
     try {
@@ -1400,7 +1476,8 @@ WD.UI = (() => {
     box.scrollIntoView({ block: "center" });
     $("mpName").focus();
     $("mpName").select();
-    toast(`You're invited to room ${code}. Type your name and press Join.`, "good");
+    toast(Bootcamp.status() ? `You're invited to room ${code}. Type your name and press Join.`
+      : `You're invited to room ${code}. New here? Do the 3-minute Boot Camp first; the code stays filled in.`, "good");
   }
 
   // ---------- modals ----------
@@ -1613,9 +1690,11 @@ WD.UI = (() => {
 
   // ---------- yes / no questions ----------
   let confirmDone = null;
-  function confirmBox({ title, text, yes = "Yes", no = "No" }) {
+  // tone: "danger" (red yes, for leaving or ending things) or "primary" (gold yes, for an invitation).
+  function confirmBox({ title, text, yes = "Yes", no = "No", tone = "danger" }) {
     $("confirmTitle").textContent = title;
     $("confirmText").textContent = text;
+    $("confirmYes").className = tone === "primary" ? "primary" : "danger";
     $("confirmYes").textContent = yes;
     $("confirmNo").textContent = no;
     $("confirm").hidden = false;
@@ -1662,7 +1741,8 @@ WD.UI = (() => {
       const P = e.leader && !e.human ? WD.PERSONAS[e.leader.persona] : null;
       const ldr = P ? `<br><small class="ldr" title="${esc(P.desc)}">${e.leader.face} ${esc(leaderName(e))} · ${P.icon} ${P.name}</small>` : "";
       const team = e.team ? ` · ${esc(WD.SCENARIOS[G.settings.scenario]?.teams?.[e.team] || "")}` : "";
-      return `<tr><td class="nm">${flag(e.start)}<span>${esc(e.name)} <span class="perk-ic" title="${esc(perk.name)}: ${esc(perk.desc)}">${perk.icon}</span>${e.nukes > 0 ? ' <span title="Has nuclear warheads">☢</span>' : ""}${player}${ldr}<br><small style="color:var(--muted);font-weight:400">${Game.cache.owned[e.id].length} nations${border}${team}</small></span></td>
+      const held = Game.cache.owned[e.id].length;
+      return `<tr><td class="nm">${flag(e.start)}<span>${esc(e.name)} <span class="perk-ic" title="${esc(perk.name)}: ${esc(perk.desc)}">${perk.icon}</span>${e.nukes > 0 ? ' <span title="Has nuclear warheads">☢</span>' : ""}${player}${ldr}<br><small style="color:var(--muted);font-weight:400">${held} nation${held === 1 ? "" : "s"}${border}${team}</small></span></td>
         <td class="num">${Game.worldShare(e.id).toFixed(1)}%</td>
         <td><span class="attitude ${attCls}">${att}</span></td>
         <td><span class="rel ${rel}">${REL_ICON[rel]} ${rel}</span></td>
@@ -1678,7 +1758,8 @@ WD.UI = (() => {
   function showGameOver(over) {
     const G = Game.state, won = over.winners.includes(S.me);
     const career = bankCareer(true);
-    Progress.finishWar(G.id, won, G.settings.scenario, G.settings.difficulty);
+    // A Boot Camp sandbox played to the end is still practice: it adds no war, win or stars.
+    if (!G.settings.tutorial) Progress.finishWar(G.id, won, G.settings.scenario, G.settings.difficulty);
     S.overInfo = { over, career, fresh: true };
     Sound.play(won ? "victory" : "defeat");
     if (career?.promoted) setTimeout(() => Sound.play("rankup"), 1800);
@@ -1915,6 +1996,7 @@ WD.UI = (() => {
       }
     });
     $("careerBox").addEventListener("change", ev => { if (ev.target.id === "titlePick") Progress.choose("title", ev.target.value); });
+    $("bootBox").addEventListener("click", ev => { if (ev.target.closest("[data-boot]")) startBootcamp(); });
     $("scenarioCards").addEventListener("click", ev => {
       const ids = Object.keys(WD.SCENARIOS);
       const arrow = ev.target.closest("[data-car]");

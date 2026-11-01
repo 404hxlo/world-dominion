@@ -83,6 +83,7 @@ WD.AI = (() => {
   // ---------- main loop ----------
   function tick(dt) {
     const G = Game.state;
+    if (G.settings.tutorial) return;   // Boot Camp rivals stand still
     const diff = WD.DIFFICULTY[G.settings.difficulty];
     for (const e of G.empires) {
       if (!e.isAI || !e.alive) continue;

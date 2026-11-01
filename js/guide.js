@@ -70,6 +70,8 @@ WD.Guide = (() => {
   function check(ownedCount) { if (active && ownedCount >= 5) event("grow"); }
 
   const reset = () => { try { localStorage.removeItem(KEY); } catch { /* storage blocked */ } };
+  // Boot Camp teaches the same things, so finishing it retires these missions.
+  const finish = () => { try { localStorage.setItem(KEY, "done"); } catch { /* storage blocked */ } stop(); };
 
-  return { start, stop, event, check, reset, get active() { return active; }, finished };
+  return { start, stop, event, check, reset, finish, get active() { return active; }, finished };
 })();

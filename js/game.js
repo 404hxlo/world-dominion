@@ -145,9 +145,10 @@ WD.Game = (() => {
 
   // ---------- medals, experience and stats ----------
   const newStats = () => ({ kills: 0, captures: 0, capitals: 0, repelled: 0, seaWins: 0, missiles: 0, missilesFired: 0, nukesFired: 0, bounties: 0, minShare: 100, capTimes: [] });
-  function addXp(e, n) { if (e >= 0 && G.empires[e].human) G.empires[e].xp += Math.round(n); }
+  // Boot Camp is practice: it earns no medals or experience (it pays its own reward when finished).
+  function addXp(e, n) { if (e >= 0 && G.empires[e].human && !G.settings.tutorial) G.empires[e].xp += Math.round(n); }
   function award(e, id) {
-    if (e < 0 || !WD.MEDALS[id]) return;
+    if (e < 0 || !WD.MEDALS[id] || G.settings.tutorial) return;
     const emp = G.empires[e];
     if (!emp.human || emp.medals[id] !== undefined) return;
     emp.medals[id] = Math.round(G.time);
@@ -167,8 +168,10 @@ WD.Game = (() => {
         mode: settings.mode, difficulty: settings.difficulty, rivals: settings.rivals, victory: settings.victory,
         teams: settings.teams === "coop" ? "coop" : "ffa", multiplayer: !!settings.multiplayer,
         scenario: WD.SCENARIOS[settings.scenario] ? settings.scenario : "classic", fog: !!settings.fog,
+        tutorial: !!settings.tutorial,
       },
-      time: 0, nextId: 1, over: null, autosaveAt: 60, dipClock: 0, graceOver: false,
+      // Boot Camp has no ceasefire to count down: its rivals never attack anyway.
+      time: 0, nextId: 1, over: null, autosaveAt: 60, dipClock: 0, graceOver: !!settings.tutorial,
       empires: [], owner: [], units: [], vet: [], sieges: [], armies: [], missions: [], bombards: [],
       relations: {}, opinion: {}, proposals: [], capturedAt: [],
       offers: [], bounties: [], fx: [], eventAt: 35, sampleAt: 0, history: null,
@@ -206,6 +209,20 @@ WD.Game = (() => {
     const id = G.settings.scenario, sc = WD.SCENARIOS[id];
     const colors = WD.AI_COLORS.filter(c => !G.empires.some(e => e.color === c));
     const addAI = c => G.empires[addEmpire(c, colors.length ? colors.shift() : freeColor())];
+    if (G.settings.tutorial) {
+      // Boot Camp: two far-off rivals who never move, and weak neighbors to practise on.
+      for (const name of ["Japan", "Brazil"]) {
+        const c = W.byName.get(name);
+        if (c && G.owner[c.id] < 0) addAI(c.id);
+      }
+      for (const [name, inf] of [["Belgium", 10], ["Luxembourg", 5]]) {
+        const c = W.byName.get(name);
+        if (!c || G.owner[c.id] >= 0) continue;
+        cache.base[c.id] = { ...U.empty(), inf };
+        G.units[c.id] = { ...U.empty(), inf };
+      }
+      return;
+    }
     if (sc.empires) {
       for (const s of sc.empires) {
         const c = W.byName.get(s.start);

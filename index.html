@@ -66,6 +66,7 @@
   <aside id="bounties" class="frame" hidden></aside>
   <div id="minimap" hidden><canvas title="Click to jump there"></canvas><span class="mm-glass"></span><span class="mm-label">Radar</span></div>
   <div id="mission" class="frame" hidden></div>
+  <div id="coach" class="frame" hidden></div>
   <div id="banner" hidden><b id="bannerText"></b><span id="bannerSub"></span></div>
   <div id="ticker" hidden><span class="tk-tag">World news</span><div class="tk-body"><span class="tk-text"></span></div></div>
   <div id="log" aria-live="polite"></div>
@@ -93,6 +94,8 @@
 
     <div id="menuMain">
     <div id="careerBox" class="box career"></div>
+
+    <div id="bootBox" class="box bootcamp"></div>
 
     <div id="savesBox" class="box" hidden>
       <h3>Continue</h3>
@@ -189,6 +192,7 @@
     <details class="box howto">
       <summary>How to play</summary>
       <ul>
+        <li>New here? <b>Boot Camp</b> (top of this menu) walks you through everything in 3 minutes.</li>
         <li><b>Left-click</b> one of your countries to select it. <b>Right-click</b> any other country to send troops. Hover a target first to see the route, the travel time and your odds.</li>
         <li>Buy units in the side panel. Hold <b>Shift</b> to buy 5. Hotkeys: <b>Q</b> infantry, <b>W</b> tanks, <b>E</b> artillery, <b>R</b> warships, <b>T</b> aircraft, <b>Y</b> missiles.</li>
         <li><b>1–4</b> sets how much of the army to send (25% to all). <b>G</b> lets you pick a target with left-click.</li>
@@ -262,6 +266,7 @@
   <script src="js/minimap.js"></script>
   <script src="js/globe.js"></script>
   <script src="js/guide.js"></script>
+  <script src="js/bootcamp.js"></script>
   <script src="js/map.js"></script>
   <script src="js/ui.js"></script>
 </body>

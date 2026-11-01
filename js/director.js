@@ -20,6 +20,15 @@ WD.Director = (() => {
 
   function tick(dt) {
     const G = Game.state;
+    if (G.settings.tutorial) {
+      // Boot Camp: no surprises, only the contract the drill sergeant hands out.
+      clock += dt;
+      if (clock >= 1) {
+        clock = 0;
+        for (const e of G.empires) if (e.human) for (const b of G.bounties.filter(x => x.for === e.id)) checkContract(b, e);
+      }
+      return;
+    }
     if (G.time >= G.eventAt) {
       G.eventAt = G.time + (45 + Math.random() * 35) / (G.settings.mode === "quick" ? 1.3 : 1);
       worldEvent();
