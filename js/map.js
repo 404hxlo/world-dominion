@@ -23,6 +23,10 @@ WD.Map = (() => {
   let gFogWorld, fogEls = [], fogShown = [], gMarksWorld, gBorders, radEl, reachEl, selectGlowEl, selectEl, gHoverWorld, hoverEl;
   let gTopWorld, gFlash, gRoutes, gFx, gDots, gPins, gCaps, gBadges, gArmies, gMissions, gEffects;
   let zoom, projection, geoPath, light = null;
+  // A phone shows the whole world a few hundred pixels wide, a desktop well over a thousand. Zoom
+  // levels asked for by the game are scaled up by this much on small screens, so countries look
+  // about as big as on a desktop.
+  let zoomScale = 1;
   let countryEls = [], dotEls = [], badgeEls = [], anchorPx = [], areaPx = [], markEls = [];
   const shapes = { light: [], full: [] }, coastShape = { light: "", full: "" };
   let detail = "light";
@@ -68,6 +72,8 @@ WD.Map = (() => {
     shapes.light = light.features.map(f => geoPath(f) || "");
     coastShape.full = geoPath(world.coast);
     coastShape.light = geoPath(light.coast);
+    const [[x0], [x1]] = geoPath.bounds({ type: "Sphere" });
+    zoomScale = Math.min(3.5, Math.max(1, 1400 / (x1 - x0)));
     live = drawn = d3.zoomIdentity;
     detail = "light";
 
@@ -145,7 +151,7 @@ WD.Map = (() => {
     });
 
     zoom = d3.zoom()
-      .scaleExtent([1, 60])
+      .scaleExtent([1, 60 * zoomScale])
       .translateExtent([[-w * 0.2, -h * 0.2], [w * 1.2, h * 1.2]])
       .on("zoom", ev => { live = ev.transform; stretch(); })
       .on("end", commit);
@@ -153,10 +159,10 @@ WD.Map = (() => {
 
     const cidOf = ev => ev.target.__cid;
     for (const s of [svgMap, svgTop]) {
-      s.on("click", ev => { const c = cidOf(ev); if (c !== undefined) hooks.onLeft(c); else hooks.onEmpty(); });
+      s.on("click", ev => { const c = tapped(ev); if (c !== undefined) hooks.onLeft(c); else hooks.onEmpty(); });
       s.on("contextmenu", ev => {
         ev.preventDefault();
-        const c = cidOf(ev);
+        const c = tapped(ev);
         if (c !== undefined) hooks.onRight(c); else hooks.onEmptyRight();
       });
       s.on("mousemove", ev => hooks.onHover(cidOf(ev) ?? -1, ev));
@@ -169,6 +175,20 @@ WD.Map = (() => {
     recolorAll();
     position(true);
     if (selectC >= 0) select(selectC, reachOn);
+  }
+
+  // A fingertip covers more than a small island or Luxembourg, so on a touchscreen a tap close to
+  // a small nation's dot picks that nation, even if it landed on the sea or a big neighbor.
+  function tapped(ev) {
+    let c = ev.target.__cid;
+    if (!hooks.touch()) return c;
+    // A tap on the sea snaps to a dot up to 28px away; a tap on a country only to one close beside it.
+    let best = c === undefined ? 28 : 16;
+    dotEls.forEach((el, id) => {
+      const d = Math.hypot(el.getAttribute("cx") - ev.clientX, el.getAttribute("cy") - ev.clientY);
+      if (d < best) { best = d; c = id; }
+    });
+    return c;
   }
 
   // ---------- panning & zooming ----------
@@ -187,7 +207,7 @@ WD.Map = (() => {
     drawn = live;
     for (const s of stretched()) s.node().style.transform = "";
     for (const g of [gWorld, gFogWorld, gMarksWorld, gHoverWorld, gTopWorld]) g.attr("transform", drawn);
-    const want = drawn.k >= DETAIL_K ? "full" : "light";
+    const want = drawn.k >= DETAIL_K * zoomScale ? "full" : "light";
     if (want !== detail) setDetail(want);
     position(true);
   }
@@ -701,7 +721,8 @@ WD.Map = (() => {
   // Arrows at the screen edge pointing at threatened countries that are out of view.
   function updateEdges(list) {
     const box = document.getElementById("edgeAlerts");
-    const w = innerWidth, h = innerHeight, top = 70, pad = 30, bottom = 34;
+    const { top, bottom } = hooks.insets();
+    const w = innerWidth, h = innerHeight, pad = 30;
     const shown = new Set();
     for (const th of list) {
       if (shown.has(th.dest)) continue;
@@ -764,14 +785,18 @@ WD.Map = (() => {
     recolorAll();
   }
 
+  // Center a spot in the part of the screen the map really shows (phones cover some of it with panels).
   function focusPx([x, y], k) {
-    svgMap.transition().duration(700).call(zoom.transform, d3.zoomIdentity.translate(innerWidth / 2 - x * k, innerHeight / 2 - y * k).scale(k));
+    const { top, bottom } = Game.state && hooks.phase() === "game" ? hooks.insets() : { top: 0, bottom: 0 };
+    const cy = (top + innerHeight - bottom) / 2;
+    svgMap.transition().duration(700).call(zoom.transform, d3.zoomIdentity.translate(innerWidth / 2 - x * k, cy - y * k).scale(k));
   }
-  const focus = (c, k = Math.max(live.k, 3)) => focusPx(anchorPx[c], k);
+  // k is a desktop zoom level (see zoomScale). Without one the view zooms in to at least 3, or stays closer.
+  const focus = (c, k) => focusPx(anchorPx[c], k ? k * zoomScale : Math.max(live.k, 3 * zoomScale));
   // Jump to a longitude/latitude (from the minimap).
-  function focusAt(ll, k = Math.max(live.k, 2.5)) {
+  function focusAt(ll, k) {
     const p = projection(ll);
-    if (p) focusPx(p, k);
+    if (p) focusPx(p, k ? k * zoomScale : Math.max(live.k, 2.5 * zoomScale));
   }
 
   // What's on screen in longitude/latitude: the center and an outline around the edges.
@@ -797,6 +822,6 @@ WD.Map = (() => {
   return {
     init, build, show, hide, ready, setLanes, recolor, recolorAll, colorOf, markBorders, reset, select, hover, setPreview, setRange,
     focus, focusAt, view, frame, refresh, flash, boom, nuke, intercept, eventFx, capture, beacon, threats, onScreen, setBounties,
-    get zoomK() { return live.k; },
+    get zoomK() { return live.k / zoomScale; },   // as a desktop zoom level (see zoomScale)
   };
 })();

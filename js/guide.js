@@ -3,14 +3,19 @@ window.WD = window.WD || {};
 
 WD.Guide = (() => {
   const KEY = "worldDominion.tutorial";
+  // touch: the same tip for touchscreens, where it differs.
   const STEPS = [
-    { id: "select", title: "Select your capital", text: "Left-click your home country. It's pulsing on the map." },
-    { id: "buy", title: "Recruit an army", text: "With your country selected, click a unit card or press Q for infantry, W for tanks." },
-    { id: "attack", title: "Launch an attack", text: "Right-click a neighboring country. Hover first to see the route and your odds." },
+    { id: "select", title: "Select your capital", text: "Left-click your home country. It's pulsing on the map.", touch: "Tap your home country. It's pulsing on the map." },
+    { id: "buy", title: "Recruit an army", text: "With your country selected, click a unit card or press Q for infantry, W for tanks.",
+      touch: "With your country selected, tap a unit card. ×5 and ×10 buy more with each tap." },
+    { id: "attack", title: "Launch an attack", text: "Right-click a neighboring country. Hover first to see the route and your odds.",
+      touch: "Tap a neighboring country to see the route and your odds, then tap ⚔ Attack." },
     { id: "capture", title: "Conquer a nation", text: "Win the battle (⚔) to take the country. Bigger armies win faster." },
-    { id: "support", title: "Call in support", text: "Weaken a target with an air strike (A), artillery (B) or a missile (M)." },
+    { id: "support", title: "Call in support", text: "Weaken a target with an air strike (A), artillery (B) or a missile (M).",
+      touch: "Weaken a target: tap ✈️ Air strike, 💥 Bombard or 🚀 Missile in the panel, then the target." },
     { id: "grow", title: "Build an empire", text: "Control 5 nations. Rich countries pay more and count more toward victory." },
   ];
+  const touch = () => document.body.classList.contains("touch");
   let done = new Set(), active = false, finishedAt = 0, el = null, onDone = () => {};
 
   const finished = () => { try { return localStorage.getItem(KEY) === "done"; } catch { return false; } };
@@ -48,11 +53,11 @@ WD.Guide = (() => {
     const dots = STEPS.map(s => `<span class="m-dot${done.has(s.id) ? " on" : ""}${s === next ? " now" : ""}" title="${s.title}"></span>`).join("");
     el.innerHTML = next
       ? `<div class="m-tag">Mission ${done.size + 1}/${STEPS.length}</div>
-         <div class="m-body"><b>${next.title}</b><span>${next.text}</span></div>
+         <div class="m-body"><b>${next.title}</b><span>${touch() && next.touch ? next.touch : next.text}</span></div>
          <div class="m-dots">${dots}</div>
          <button class="m-x" title="Hide the tips (turn them back on in Settings)">×</button>`
       : `<div class="m-tag done">Training complete</div>
-         <div class="m-body"><b>You're ready, Commander.</b><span>Now conquer the world. Open Diplomacy (D) to make or break treaties.</span></div>
+         <div class="m-body"><b>You're ready, Commander.</b><span>Now conquer the world. Open Diplomacy (${touch() ? "🤝" : "D"}) to make or break treaties.</span></div>
          <div class="m-dots">${dots}</div>`;
     el.hidden = false;
     el.querySelector(".m-x")?.addEventListener("click", () => {

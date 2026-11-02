@@ -15,8 +15,9 @@ WD.Bootcamp = (() => {
   const remember = v => { try { localStorage.setItem(KEY, v); } catch { /* storage blocked */ } };
   const val = (x, c) => (typeof x === "function" ? x(c) : x);
 
-  // hooks: ctx() -> { G, me, selected, hover, frac, modal, action }, beacon(c), show(c, zoom), contract(c),
-  // sound(name), complete(first) -> experience paid, finish(how), invite() -> room code or ""
+  // hooks: ctx() -> { G, me, selected, hover, frac, modal, action, touch, target, radar }, beacon(c), show(c, zoom),
+  // fold(on) (upright phones: shrink the panel sheet), contract(c), sound(name), complete(first) -> experience paid,
+  // finish(how), invite() -> room code or ""
   function init(world, h) {
     hooks = h;
     el = document.getElementById("coach");
@@ -33,52 +34,72 @@ WD.Bootcamp = (() => {
   function build(W) {
     const id = name => W.byName.get(name).id;
     const FR = id("France"), BE = id("Belgium"), LU = id("Luxembourg"), ES = id("Spain");
-    const mine = (c, x) => c.G.owner[x] === c.me.id;
+    const mine = (c, x) => x >= 0 && c.G.owner[x] === c.me.id;
+    // Orders are worded for a mouse or for fingers, whichever the player is using (c.touch).
+    const click = c => (c.touch ? "tap" : "click"), Click = c => (c.touch ? "Tap" : "Click");
     // A window step: open it, look around, close it.
     const windowStep = (name, title, open, inside, button) => ({
       title,
-      text: () => (st.opened ? inside + " Close it to carry on." : open),
+      text: c => (st.opened ? inside + " Close it to carry on." : val(open, c)),
       target: () => (st.opened ? "#modalCard [data-m=close]" : button),
       watch: c => { if (c.modal === name) st.opened = true; },
       done: c => st.opened && !c.modal,
     });
     return [
       { title: "Welcome to Boot Camp", text: "I'm your drill sergeant. In about three minutes you'll learn everything you need to conquer the world. Nobody will attack you here, so take your time.", next: true },
-      { title: "Your capital", text: "This is <b>France</b>, your home nation. The gold ★ marks your capital. <b>Left-click France</b> to select it.", country: FR,
+      { title: "Your capital", text: c => `This is <b>France</b>, your home nation. The gold ★ marks your capital. <b>${c.touch ? "Tap" : "Left-click"} France</b> to select it.`, country: FR,
         done: c => c.selected === FR },
-      { title: "Recruit infantry", text: () => `The panel on the right shows your troops. Buy <b>5 infantry</b>: click the Infantry card, or press <kbd>Q</kbd>. (${Math.min(5, st.inf || 0)}/5)`,
+      { title: "Recruit infantry", panel: true, text: c => `The panel shows your troops. Buy <b>5 infantry</b>: ${c.touch ? "tap the Infantry card (×5 buys five with one tap)" : "click the Infantry card, or press <kbd>Q</kbd>"}. (${Math.min(5, st.inf || 0)}/5)`,
         target: '#panel .unit-card[data-t="inf"]', done: () => (st.inf || 0) >= 5 },
-      { title: "Bring tanks", text: () => `Tanks hit three times harder than infantry. Buy <b>2 tanks</b>: click the Tanks card, or press <kbd>W</kbd>. (${Math.min(2, st.tank || 0)}/2)`,
+      { title: "Bring tanks", panel: true, text: c => `Tanks hit three times harder than infantry. Buy <b>2 tanks</b>: ${click(c)} the Tanks card${c.touch ? "" : ", or press <kbd>W</kbd>"}. (${Math.min(2, st.tank || 0)}/2)`,
         target: '#panel .unit-card[data-t="tank"]', done: () => (st.tank || 0) >= 2 },
-      { title: "Choose your force", text: "Pick how much of the army to send. Click <b>All</b>, or press <kbd>4</kbd>.",
+      { title: "Choose your force", panel: true, text: c => `Pick how much of the army to send. ${Click(c)} <b>All</b>${c.touch ? "" : ", or press <kbd>4</kbd>"}.`,
         target: '#panel [data-act="frac"][data-v="1"]', done: c => c.frac === 1 },
-      { title: "Scout the target", text: "Move your mouse over <b>Belgium</b>, just north of France. The tooltip shows the route, the travel time and your odds.", country: BE,
-        done: c => c.hover === BE },
-      { title: "Attack!", text: "<b>Right-click Belgium</b> to send your army. (You can also press <kbd>G</kbd> and left-click a target.)", country: BE,
+      { title: "Scout the target", country: BE, done: c => c.hover === BE,
+        text: c => (c.touch ? "<b>Tap Belgium</b>, just north of France. A card shows the route, the travel time and your odds."
+          : "Move your mouse over <b>Belgium</b>, just north of France. The tooltip shows the route, the travel time and your odds.") },
+      { title: "Attack!", country: BE,
+        text: c => (!c.touch ? "<b>Right-click Belgium</b> to send your army. (You can also press <kbd>G</kbd> and left-click a target.)"
+          : c.target === BE ? "Tap <b>⚔ Attack</b> on the card to send your army."
+          : !mine(c, c.selected) ? "<b>Tap France</b> to select your army, then tap <b>Belgium</b>."
+          : "<b>Tap Belgium</b>, then <b>⚔ Attack</b> on its card."),
+        target: c => (c.touch && c.target === BE ? '#targetCard [data-tc="go"]' : null),
         done: c => mine(c, BE) || c.G.sieges[BE].some(s => s.owner === c.me.id) || c.G.armies.some(a => a.owner === c.me.id && a.path[a.path.length - 1] === BE) },
       { title: "Into battle", text: "Your army marches to Belgium and fights as soon as it arrives. The badge shows defenders ⚔ attackers. Beat every defender to take the nation.", country: BE,
         done: c => mine(c, BE) },
-      { title: "Conquered!", text: "Belgium is yours. Every nation you hold pays into your <b>treasury</b> (top left), and big economies pay the most. Money buys armies.", target: ".hud-money", next: true },
-      { title: "Contracts", text: "Contracts (bottom right) pay cash for goals. Here's one: <b>take Luxembourg</b> for $300. Your army is in Belgium now: <b>left-click Belgium</b>, then <b>right-click Luxembourg</b>.", target: "#bounties", country: LU, view: [LU, 6],
+      { title: "Conquered!", text: "Belgium is yours. Every nation you hold pays into your <b>treasury</b> (at the top), and big economies pay the most. Money buys armies.", target: ".hud-money", next: true },
+      { title: "Contracts", country: LU, view: [LU, 6],
+        text: c => (c.touch
+          ? "<b>Contracts</b> pay cash for goals. Take <b>Luxembourg</b> for $300: tap <b>Belgium</b> (your army is there), then <b>Luxembourg</b>, then <b>⚔ Attack</b>."
+          : "<b>Contracts</b> pay cash for goals. Here's one: <b>take Luxembourg</b> for $300. Your army is in Belgium now: <b>left-click Belgium</b>, then <b>right-click Luxembourg</b>."),
+        target: c => (c.touch && c.target === LU ? '#targetCard [data-tc="go"]' : "#bounties"),
         enter: () => hooks.contract(LU), done: c => mine(c, LU) },
-      { title: "Air strike", text: c => (c.action === "air" ? "Now click <b>Spain</b> to bomb it." : c.selected === FR
-          ? "Support weapons soften up a target before you attack. Click <b>✈️ Air strike</b> in the panel, or press <kbd>A</kbd>. (<kbd>M</kbd> fires a missile, <kbd>B</kbd> shells a neighbor with artillery.)"
-          : "Support weapons soften up a target before you attack. Your aircraft are in France: <b>left-click France</b> to select it."),
-        country: ES, view: [FR, 3.4],
-        target: c => (c.selected === FR && c.action !== "air" ? '#panel [data-act="mode"][data-v="air"]' : null),
+      // On a touchscreen the target card has the support weapons too, so it teaches those instead of the panel.
+      { title: "Air strike", country: ES, view: [FR, 3.4],
+        text: c => (c.action === "air" ? `Now ${click(c)} <b>Spain</b> to bomb it.`
+          : c.touch && c.target === ES ? "Tap <b>✈️ Air strike</b> on the card. (🚀 Missiles and 💥 artillery show up there too, when you have them.)"
+          : c.selected !== FR ? `Support weapons soften up a target before you attack. Your aircraft are in France: <b>${c.touch ? "tap" : "left-click"} France</b> to select it.`
+          : c.touch ? "Support weapons soften up a target before you attack. Tap <b>Spain</b>, then <b>✈️ Air strike</b> on its card."
+          : "Support weapons soften up a target before you attack. Click <b>✈️ Air strike</b> in the panel, or press <kbd>A</kbd>. (<kbd>M</kbd> fires a missile, <kbd>B</kbd> shells a neighbor with artillery.)"),
+        target: c => (c.touch ? (c.target === ES ? '#targetCard [data-tc="air"]' : null)
+          : c.selected === FR && c.action !== "air" ? '#panel [data-act="mode"][data-v="air"]' : null),
         done: () => !!st.air },
       { title: "The Shop", text: c => (st.tech ? "Researched! Close the Shop to carry on."
-          : c.modal === "research" ? "Research upgrades your whole empire for the rest of the war. Click <b>Buy</b> under <b>Blitzkrieg</b>."
-          : "Here's $600 of war funds. Open the <b>Shop</b> (<kbd>U</kbd>, or the gold button at the top) and research <b>Blitzkrieg</b>."),
+          : c.modal === "research" ? `Research upgrades your whole empire for the rest of the war. ${Click(c)} <b>Buy</b> under <b>Blitzkrieg</b>.`
+          : `Here's $600 of war funds. Open the <b>Shop</b> (${c.touch ? "the gold 🛒 button" : "<kbd>U</kbd>, or the gold button"} at the top) and research <b>Blitzkrieg</b>.`),
         target: c => (st.tech ? "#modalCard [data-m=close]" : c.modal === "research" ? '#modalCard [data-tech="blitz"]' : "#btnTech"),
         enter: c => { c.me.money += 600; st.techs = c.me.tech.length; },
         watch: c => { if (c.me.tech.length > st.techs) st.tech = true; },
         done: c => !!st.tech && !c.modal },
-      windowStep("autopilot", "Autopilot", "Open the <b>Autopilot</b> (<kbd>P</kbd>, or the button at the top).",
+      windowStep("autopilot", "Autopilot", c => `Open the <b>Autopilot</b> (${c.touch ? "the 🛡 button" : "<kbd>P</kbd>, or the button"} at the top).`,
         "Your nations raise free militia 🛡, and the Autopilot defends them while you're busy elsewhere.", "#btnAuto"),
-      windowStep("diplomacy", "Rivals and diplomacy", "Rival empires are ranked on the top left. Open <b>Diplomacy</b> (<kbd>D</kbd>).",
+      windowStep("diplomacy", "Rivals and diplomacy", c => `Rival empires are ranked in the <b>Power rankings</b>. Open <b>Diplomacy</b> (${c.touch ? "the 🤝 button" : "<kbd>D</kbd>"}).`,
         "Offer peace to stop a war, or an alliance to march through each other's land.", "#btnDiplomacy"),
-      { title: "Stay alert", text: "Red dashed routes and ⚠ alerts warn you of incoming attacks. The <b>radar</b> (bottom right) shows the whole world: click it to jump there. Press <kbd>Space</kbd> to pause any time.", target: "#minimap", next: true },
+      // Phones have no radar (pinching out does the same job), so they're shown the pause button instead.
+      { title: "Stay alert", next: true, target: c => (c.radar ? "#minimap" : '.hud-speed [data-speed="0"]'),
+        text: c => `Red dashed routes and ⚠ alerts warn you of incoming attacks. ${c.radar
+          ? `The <b>radar</b> shows the whole world: ${click(c)} it to jump there.` : `${c.touch ? "Pinch" : "Scroll"} to zoom out and see the whole world.`} ${c.touch
+          ? "Tap <b>❚❚</b>" : "Press <kbd>Space</kbd>"} to pause any time.` },
       { title: "How to win", text: "Control the share of the world shown on the <b>World Control</b> bar: 75% in a standard war. Capture enemy capitals ★ to loot them and split their empires.", target: ".hud-control", next: true },
       { title: "Boot Camp complete!", text: () => (st.xp ? `You're ready, Commander. <b>+${st.xp} XP</b> for finishing your training.` : "You're ready, Commander. Now go and conquer the world."), final: true },
     ];
@@ -104,6 +125,7 @@ WD.Bootcamp = (() => {
     const s = steps[i];
     const c = hooks.ctx();
     if (s.enter) s.enter(c);
+    hooks.fold(!s.panel);
     if (s.country !== undefined) hooks.beacon(s.country);
     if (s.view) hooks.show(...s.view);
     else if (s.country !== undefined) hooks.show(s.country);
@@ -132,6 +154,8 @@ WD.Bootcamp = (() => {
     if (!active) return;
     if (name === "buy") st[data.type] = (st[data.type] || 0) + data.n;
     if (name === "air") st.air = true;
+    // Move on straight away, so a quick next purchase counts toward the next order.
+    tick();
   }
 
   function render(force, c) {

@@ -13,6 +13,11 @@ WD.UI = (() => {
   const SLOTS = ["auto", "1", "2", "3"];
   const BUY_KEYS = { q: "inf", w: "tank", e: "art", r: "ship", t: "air", y: "mis" };
   const REL_ICON = { war: "⚔", peace: "🕊", alliance: "🤝" };
+  // Phone layouts (the same queries as the stylesheet): compact covers phones either way up,
+  // sheet only upright phones, where the selected nation's panel sits at the bottom.
+  const compactMq = matchMedia("(max-width: 640px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape)");
+  const sheetMq = matchMedia("(max-width: 640px) and (orientation: portrait)");
+  const compact = () => compactMq.matches;
 
   let world = null;
   const S = {
@@ -25,6 +30,9 @@ WD.UI = (() => {
     setup: { country: -1, mode: "standard", rivals: 6, victory: 75, difficulty: "normal", teams: "ffa", scenario: "classic", fog: true },
     panelKey: "", panelDyn: {}, proposalKey: "", offerKey: "", bountyKey: "", lobbyHtml: "", modal: null, busy: false,
     threatIds: new Set(), vision: null, visionAt: 0, bannerTimer: 0,
+    // Touchscreens: taps instead of hover and right-click (see setTouch), the tapped target, and
+    // how many units each tap on a unit card buys.
+    touch: matchMedia("(pointer: coarse)").matches, target: -1, targetKey: {}, buyN: 1, sheetMin: false,
   };
   const settings = { effects: true, lanes: true, tips: true };
   try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}); } catch { /* storage blocked */ }
@@ -117,18 +125,24 @@ WD.UI = (() => {
     Net.init(world, () => ({ speed: S.speed, paused: S.paused }));
     Map.init(world, {
       phase: () => S.phase, me: () => S.me, selected: () => S.selected, hover: () => S.hover,
-      effects: () => settings.effects, lanes: () => settings.lanes, vision: visionNow,
+      effects: () => settings.effects, lanes: () => settings.lanes, vision: visionNow, touch: () => S.touch, insets: mapInsets,
       onLeft, onRight, onHover: setHover,
-      onEmpty: () => { if (S.phase === "game" && !S.action) select(-1); },
+      // A tap on the sea first closes the target card, then deselects.
+      onEmpty: () => { if (S.phase !== "game" || S.action) return; if (S.target >= 0) closeTargetCard(); else select(-1); },
       onEmptyRight: () => { if (S.action) setAction(null); },
       onAlert: c => Map.focus(c),
     });
     News.init($("ticker"), c => Map.focus(c));
     Bootcamp.init(world, {
-      ctx: () => ({ G: Game.state, me: Game.state.empires[S.me], selected: S.selected, hover: S.hover, frac: S.frac, modal: S.modal, action: S.action }),
+      ctx: () => ({
+        G: Game.state, me: Game.state.empires[S.me], selected: S.selected, hover: S.hover, frac: S.frac, modal: S.modal, action: S.action,
+        touch: S.touch, target: S.target, radar: !!$("minimap").offsetWidth,
+      }),
       beacon: c => Map.beacon(c),
+      // Upright phones: fold the panel sheet down to its title while a step doesn't need it, so the map shows.
+      fold: on => { S.sheetMin = on; if (S.phase === "game") renderPanel(); },
       // With a zoom level the camera always moves there; without one it only moves if c is off screen.
-      show: (c, k) => { if (k) Map.focus(c, k); else if (!Map.onScreen(c)) Map.focus(c, Math.max(Map.zoomK, 3)); },
+      show: (c, k) => { if (k) Map.focus(c, k); else if (!Map.onScreen(c)) Map.focus(c); },
       // The one contract Boot Camp hands out.
       contract: c => {
         const G = Game.state;
@@ -171,14 +185,18 @@ WD.UI = (() => {
     showMenu();
     acceptInvite();
 
-    let lastUi = 0;
+    let lastUi = 0, nextFrame = 0;
     const frame = now => {
+      requestAnimationFrame(frame);
+      // Phones and some monitors refresh 90 or 120 times a second. The map moves smoothly at 60,
+      // and drawing it more often would only drain batteries.
+      if (now < nextFrame - 2) return;
+      nextFrame = Math.max(nextFrame + 1000 / 60, now);
       simStep();
       if (S.phase === "game") {
         Map.frame();
         if (now - lastUi > 200) { lastUi = now; refreshUi(); }
       }
-      requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
     // Animation frames stop in background tabs; this keeps a hosted war running for everyone.
@@ -220,6 +238,7 @@ WD.UI = (() => {
 
   // ---------- selection & orders ----------
   function select(c) {
+    closeTargetCard();
     S.selected = c;
     setAction(null);
     Map.select(c, c >= 0 && isMine(c));
@@ -237,11 +256,19 @@ WD.UI = (() => {
     if (S.phase === "menu" || S.phase === "lobby") { chooseCountry(c); return; }
     if (S.phase !== "game") return;
     if (S.action) { doAction(S.action, c); return; }
-    select(c === S.selected ? -1 : c);
+    // Touchscreens have no right-click: tapping another nation while one of yours is selected
+    // opens its target card (odds and orders). Your own nations are simply selected.
+    if (S.touch && S.selected >= 0 && isMine(S.selected) && c !== S.selected && !isMine(c)) { openTargetCard(c); return; }
+    // A click on the selected nation deselects it. Fingers hit it again by accident too often, so
+    // on a touchscreen it stays selected (tap the sea or × to deselect).
+    select(c === S.selected && !S.touch ? -1 : c);
   }
 
   function onRight(c) {
     if (S.phase !== "game") return;
+    // A long press on a phone arrives here too. It only acts like a tap, so a finger that rests
+    // before panning never launches an attack.
+    if (S.touch) { onLeft(c); return; }
     if (S.action) { doAction(S.action, c); return; }
     if (S.selected >= 0 && isMine(S.selected) && c !== S.selected) doAction("move", c);
     else if (S.selected < 0 || !isMine(S.selected)) toast("Left-click one of your countries first, then right-click a target.");
@@ -250,6 +277,7 @@ WD.UI = (() => {
   function doAction(a, c) {
     const from = S.selected;
     setAction(null);
+    closeTargetCard();
     if (a === "nuke") { fireNuke(c); return; }
     if (from < 0 || !isMine(from)) { toast("Select one of your countries first.", "bad"); return; }
     const hostile = !isMine(c);
@@ -330,14 +358,17 @@ WD.UI = (() => {
     const hint = $("modeHint");
     hint.classList.toggle("nuke", a === "nuke");
     if (!a) { hint.hidden = true; return; }
+    closeTargetCard();
+    const v = S.touch ? "Tap" : "Click", again = S.touch ? "tap" : "click";
     const text = {
-      move: "Click a country to move or attack",
-      air: "Click a target to bomb, or one of your countries to move aircraft there",
-      bombard: "Click a neighboring country to bombard (click it again later to stop)",
-      missile: Game.missileRange(S.me) === Infinity ? "Click any target on Earth for the missile" : "Click a target for the missile",
-      nuke: "☢ Click an enemy nation for the nuclear strike",
+      move: `${v} a country to move or attack`,
+      air: `${v} a target to bomb, or one of your countries to move aircraft there`,
+      bombard: `${v} a neighboring country to bombard (${again} it again later to stop)`,
+      missile: Game.missileRange(S.me) === Infinity ? `${v} any target on Earth for the missile` : `${v} a target for the missile`,
+      nuke: `☢ ${v} an enemy nation for the nuclear strike`,
     }[a];
-    hint.textContent = text + " · Esc to cancel";
+    // The ✕ cancels on touchscreens, which have no Esc key.
+    hint.innerHTML = `<span>${text}${S.touch ? "" : "<small> · Esc to cancel</small>"}</span><button class="mh-x" aria-label="Cancel">✕</button>`;
     hint.hidden = false;
     if (a === "air") Map.setRange(S.selected, Game.airRange(S.me), "air");
     if (a === "missile") Map.setRange(S.selected, Game.missileRange(S.me), "missile");
@@ -397,8 +428,7 @@ WD.UI = (() => {
     if (!info.path) return `<div class="tip">No route. You need a border or sea lane through your own or allied land.</div>`;
     if (info.blocked) return `<div class="tip">You have a treaty with this empire. Break it in Diplomacy to attack.</div>`;
     if (info.count < 0.5) return `<div class="tip">No troops selected to send. Recruit some or change the unit types.</div>`;
-    const verdict = info.unknown ? ["Unknown odds · fog of war", "risky-t"]
-      : { ok: ["Strong attack", "ok-t"], risky: ["Risky attack", "risky-t"], bad: ["Likely to fail", "bad-t"], move: ["Reinforcement", "ok-t"] }[info.kind];
+    const verdict = verdictOf(info);
     const hops = info.path.length - 1;
     return `<div class="odds"><span>Sending</span><b>${Math.round(info.count)} troops</b>
       <span>Travel</span><b>${Math.ceil(info.eta)}s${hops > 1 ? ` · ${hops} hops` : ""}</b>
@@ -406,9 +436,39 @@ WD.UI = (() => {
       <div class="verdict ${verdict[1]}">${verdict[0]}</div></div>
       <div class="tip">Right-click to ${info.hostile ? "attack" : "move troops here"}</div>`;
   }
+  const verdictOf = info => (info.unknown ? ["Unknown odds · fog of war", "risky-t"]
+    : { ok: ["Strong attack", "ok-t"], risky: ["Risky attack", "risky-t"], bad: ["Likely to fail", "bad-t"], move: ["Reinforcement", "ok-t"] }[info.kind]);
+  // Why an order can't go ahead, or "" when it can.
+  function previewProblem(info) {
+    if (!info) return "Pick one of your nations first.";
+    if (!info.path) return "No route. You need a border or sea lane through your own or allied land.";
+    if (info.blocked) return "You have a treaty with this empire. Break it in Diplomacy to attack.";
+    if (info.count < 0.5) return "No troops to send from here. Recruit some, or change the unit types in the panel.";
+    return "";
+  }
+
+  const capitalStar = c => {
+    const o = Game.state.owner[c];
+    return o >= 0 && Game.state.empires[o].capital === c ? '<span class="cap-star" title="Capital">★</span>' : "";
+  };
+  // What's known about a country in a war: troops, economy and defenses. Shared by the tooltip and the target card.
+  function countryFacts(c) {
+    const G = Game.state, cc = world.countries[c], o = G.owner[c], seen = known(c);
+    const capital = o >= 0 && G.empires[o].capital === c;
+    let html = seen ? `<div class="u">${unitSummary(G.units[c], WD.ALL_TYPES)}${G.vet[c] >= 1 ? ` <span class="vet">${stars(G.vet[c])}</span>` : ""}</div>`
+      : `<div class="u fogged">🌫 Troops unknown</div>`;
+    html += `<div class="o" style="margin:5px 0 0">Economy +$${fmtRate(cc.value)}/s${cc.coastal ? " · coastal" : ""}${capital ? " · capital, defends +50%" : ""}</div>`;
+    if (o < 0) { const perk = perkOf(c); html += `<div class="o">${perk.icon} Defends with ${perk.name}</div>`; }
+    if (Game.cache.rad.has(c)) html += `<div class="tip rad-t">☢ Radioactive: no income or recruiting</div>`;
+    if (G.sieges[c].length && seen) html += `<div class="tip">⚔ Battle in progress</div>`;
+    return html;
+  }
 
   function setHover(c, ev) {
     const tip = $("tooltip");
+    // Fingers don't hover. A tap still sends the browser's imitation mouse moves, which are
+    // ignored here: the target card shows a tapped country instead.
+    if (S.touch) { tip.hidden = true; return; }
     const changed = c !== S.hover;
     S.hover = c;
     if (changed && S.phase === "game") {
@@ -426,17 +486,7 @@ WD.UI = (() => {
         tip.innerHTML = `<div class="t">${flag(c)}${esc(cc.name)}</div><div class="o">${tier} · economy +$${fmtRate(cc.value)}/s</div>
           <div class="perk-line"><b>${perk.icon} ${perk.name}</b> ${perk.desc}</div><div class="tip">${action}</div>`;
       } else {
-        const G = Game.state, o = G.owner[c], seen = known(c);
-        const capital = o >= 0 && G.empires[o].capital === c;
-        let html = `<div class="t">${flag(c)}${capital ? '<span class="cap-star" title="Capital">★</span>' : ""}${esc(cc.name)}</div><div class="o">${ownerLine(c)}</div>`;
-        html += seen ? `<div class="u">${unitSummary(G.units[c], WD.ALL_TYPES)}${G.vet[c] >= 1 ? ` <span class="vet">${stars(G.vet[c])}</span>` : ""}</div>`
-          : `<div class="u fogged">🌫 Troops unknown</div>`;
-        html += `<div class="o" style="margin:5px 0 0">Economy +$${fmtRate(cc.value)}/s${cc.coastal ? " · coastal" : ""}${capital ? " · capital, defends +50%" : ""}</div>`;
-        if (o < 0) { const perk = perkOf(c); html += `<div class="o">${perk.icon} Defends with ${perk.name}</div>`; }
-        if (Game.cache.rad.has(c)) html += `<div class="tip rad-t">☢ Radioactive: no income or recruiting</div>`;
-        if (G.sieges[c].length && seen) html += `<div class="tip">⚔ Battle in progress</div>`;
-        html += previewHtml(S.preview);
-        tip.innerHTML = html;
+        tip.innerHTML = `<div class="t">${flag(c)}${capitalStar(c)}${esc(cc.name)}</div><div class="o">${ownerLine(c)}</div>` + countryFacts(c) + previewHtml(S.preview);
       }
     }
     tip.hidden = false;
@@ -444,6 +494,87 @@ WD.UI = (() => {
       const r = tip.getBoundingClientRect();
       tip.style.left = Math.min(ev.clientX + 18, innerWidth - r.width - 8) + "px";
       tip.style.top = Math.min(ev.clientY + 18, innerHeight - r.height - 8) + "px";
+    }
+  }
+
+  // ---------- touchscreens: the target card ----------
+  // Tapping another nation while one of yours is selected opens this card: what's there, your
+  // odds, and the orders you can give. It stands in for hover and right-click.
+  function openTargetCard(c) {
+    S.target = c;
+    S.hover = c;
+    Map.hover(c);
+    updatePreview(c);
+    document.body.classList.add("targeting");
+    renderTargetCard();
+    Sound.play("click");
+  }
+
+  function closeTargetCard() {
+    if (S.target < 0) return;
+    S.target = -1;
+    document.body.classList.remove("targeting");
+    $("targetCard").hidden = true;
+    S.hover = -1;
+    Map.hover(-1);
+    updatePreview(-1);
+  }
+
+  // The card changes part by part, and only when a part's content changes, so a button is never
+  // replaced under a finger that's pressing it.
+  function renderTargetCard() {
+    const c = S.target, box = $("targetCard"), G = Game.state, from = S.selected;
+    if (c < 0) return;
+    if (S.phase !== "game" || from < 0 || !isMine(from) || isMine(c)) { closeTargetCard(); return; }
+    if (box.hidden || box.__c !== c) {
+      box.__c = c;
+      S.targetKey = {};
+      const fracs = [[0.25, "25%"], [0.5, "50%"], [0.75, "75%"], [1, "All"]].map(([v, l]) => `<button data-tc="frac" data-v="${v}">${l}</button>`).join("");
+      box.innerHTML = `<div class="tc-head">${flag(c, "lg")}<div class="tc-name"><b data-tc="name"></b><div class="o" data-tc="owner"></div></div><button class="x" data-tc="close" aria-label="Close">×</button></div>
+        <div class="tc-info" data-tc="facts"></div><div data-tc="odds"></div><div class="seg tc-frac">${fracs}</div><div class="tc-acts" data-tc="acts"></div>`;
+      box.hidden = false;
+    }
+    const part = (name, html) => {
+      if (S.targetKey[name] === html) return;
+      S.targetKey[name] = html;
+      box.querySelector(`[data-tc="${name}"]`).innerHTML = html;
+    };
+    part("name", capitalStar(c) + esc(nameOf(c)));
+    part("owner", ownerLine(c));
+    part("facts", countryFacts(c));
+    const info = S.preview, problem = previewProblem(info);
+    if (problem) part("odds", `<div class="tc-why">${problem}</div>`);
+    else {
+      const verdict = verdictOf(info), hops = info.path.length - 1;
+      part("odds", `<div class="tc-odds"><span>Sending</span><b>${Math.round(info.count)} troops</b><span>Travel</span><b>${Math.ceil(info.eta)}s${hops > 1 ? ` · ${hops} hops` : ""}</b>
+        ${info.hostile ? `<span>Power</span><b>${Math.round(info.attack)} vs ${info.unknown ? "?" : Math.round(info.defense)}</b>` : ""}
+        <div class="verdict ${verdict[1]}">${verdict[0]}</div></div>`);
+    }
+    for (const b of box.querySelectorAll('[data-tc="frac"]')) b.classList.toggle("on", +b.dataset.v === S.frac);
+    // The main order, then whatever support weapons can reach the target from the selected nation.
+    const u = G.units[from], hostile = Game.isHostile(S.me, c), km = Game.dist(from, c);
+    const support = (kind, icon, label, ok, why) => `<button class="ghost" data-tc="${kind}" ${ok ? "" : `disabled title="${why}"`}>${icon}<small>${label}</small></button>`;
+    let acts = `<button class="primary" data-tc="go" ${problem ? "disabled" : ""}>${hostile ? "⚔ Attack" : "➜ Move troops"}</button>`;
+    if (hostile && u.air >= 0.5) acts += support("air", "✈️", "Air strike", km <= Game.airRange(S.me), "Out of aircraft range");
+    if (hostile && u.mis >= 1) acts += support("missile", "🚀", "Missile", km <= Game.missileRange(S.me), "Out of missile range");
+    if (hostile && u.art >= 0.5 && Game.edgeOf(from, c)) {
+      const firing = G.bombards.some(b => b.from === from && b.to === c);
+      acts += support("bombard", "💥", firing ? "Stop" : "Bombard", true, "");
+    }
+    acts += support("details", "ⓘ", "Details", true, "");
+    part("acts", acts);
+  }
+
+  function onTargetClick(ev) {
+    const b = ev.target.closest("button[data-tc]");
+    if (!b || b.disabled) return;
+    const c = S.target;
+    switch (b.dataset.tc) {
+      case "close": closeTargetCard(); break;
+      case "frac": S.frac = +b.dataset.v; updatePreview(c); renderPanel(); renderTargetCard(); break;
+      case "go": doAction("move", c); break;
+      case "air": case "missile": case "bombard": doAction(b.dataset.tc, c); break;
+      case "details": select(c); break;
     }
   }
 
@@ -460,6 +591,7 @@ WD.UI = (() => {
       buildPanel(c);
     }
     updatePanel(c);
+    panel.classList.toggle("min", S.sheetMin && sheetMq.matches);
     panel.hidden = false;
   }
 
@@ -485,7 +617,9 @@ WD.UI = (() => {
         <div><span>Veterans</span><b class="vet" data-dyn="vet">—</b></div>
       </div>
       <div class="p-note" data-dyn="note"></div>
-      <div class="p-sec"><h5>${mine ? "Garrison · click to recruit" : "Defenders"}</h5><div class="units-grid">${cards}</div>
+      <div class="p-sec"><h5 class="tools">${mine
+        ? `<span>Garrison · <span class="mouse-only">click</span><span class="touch-only">tap</span> to recruit</span><span class="seg buy-n touch-only">${[1, 5, 10].map(n => `<button data-act="buyn" data-v="${n}">×${n}</button>`).join("")}</span>`
+        : "Defenders"}</h5><div class="units-grid">${cards}</div>
         <div class="militia-line" data-dyn="militia"></div></div>`;
     if (mine) {
       const fr = [[0.25, "25%"], [0.5, "50%"], [0.75, "75%"], [1, "All"]]
@@ -495,15 +629,16 @@ WD.UI = (() => {
         <div class="p-sec"><h5>Deploy</h5>
           <div class="seg">${fr}</div>
           <div class="chips">${chips}</div>
-          <div class="hint"><b>Hover</b> a country to preview the route and odds. <b>Right-click</b> it to send troops.</div>
+          <div class="hint mouse-only"><b>Hover</b> a country to preview the route and odds. <b>Right-click</b> it to send troops.</div>
+          <div class="hint touch-only"><b>Tap</b> a country to see the route and your odds, then <b>⚔ Attack</b>.</div>
         </div>
         <div class="p-sec"><h5>Orders</h5>
           <div class="acts">
-            <button class="act" data-act="mode" data-v="move" title="Pick a target with left-click">🎯 Move / attack <kbd>G</kbd></button>
-            <button class="act" data-act="mode" data-v="air" title="Bomb a target up to ${WD.RULES.airRangeKm.toLocaleString()} km away">✈️ Air strike <kbd>A</kbd></button>
-            <button class="act" data-act="mode" data-v="bombard" title="Shell a neighboring country nonstop">💥 Bombard <kbd>B</kbd></button>
-            <button class="act" data-act="mode" data-v="missile" title="Hit a target up to ${WD.RULES.missileRangeKm.toLocaleString()} km away">🚀 Missile <kbd>M</kbd></button>
-            ${Game.mods(S.me).nuclear ? `<button class="act nuke" data-act="mode" data-v="nuke" title="Fire a nuclear warhead at any enemy nation">☢ Nuke <kbd>N</kbd></button>` : ""}
+            <button class="act" data-act="mode" data-v="move" title="Pick a target with left-click"><i>🎯</i><span>Move / attack</span><kbd>G</kbd></button>
+            <button class="act" data-act="mode" data-v="air" title="Bomb a target up to ${WD.RULES.airRangeKm.toLocaleString()} km away"><i>✈️</i><span>Air strike</span><kbd>A</kbd></button>
+            <button class="act" data-act="mode" data-v="bombard" title="Shell a neighboring country nonstop"><i>💥</i><span>Bombard</span><kbd>B</kbd></button>
+            <button class="act" data-act="mode" data-v="missile" title="Hit a target up to ${WD.RULES.missileRangeKm.toLocaleString()} km away"><i>🚀</i><span>Missile</span><kbd>M</kbd></button>
+            ${Game.mods(S.me).nuclear ? `<button class="act nuke" data-act="mode" data-v="nuke" title="Fire a nuclear warhead at any enemy nation"><i>☢</i><span>Nuke</span><kbd>N</kbd></button>` : ""}
           </div>
           <div class="blist" data-dyn="bombards"></div>
         </div>`;
@@ -513,7 +648,8 @@ WD.UI = (() => {
       html += `<div class="p-sec">
         ${perk ? `<div class="perk-line"><b>${perk.icon} ${perk.name}</b> ${perk.desc}</div>` : ""}
         ${leader ? `<div class="leader-line"><span class="face">${leader.face}</span><span><b>${esc(leaderName(G.empires[o]))}</b><br>${WD.PERSONAS[leader.persona].icon} ${WD.PERSONAS[leader.persona].name}</span></div>` : ""}
-        <div class="hint">To attack, left-click one of your countries, then right-click ${esc(cc.name)}.</div></div>`;
+        <div class="hint mouse-only">To attack, left-click one of your countries, then right-click ${esc(cc.name)}.</div>
+        <div class="hint touch-only">To attack, tap one of your countries, then tap ${esc(cc.name)}.</div></div>`;
     }
     html += `<div class="p-sec" data-dyn="siegeSec"><h5>Battle</h5><div data-dyn="siege"></div></div>`;
     $("panel").innerHTML = html;
@@ -550,6 +686,7 @@ WD.UI = (() => {
         if (landlocked) b.title = "Landlocked: warships need a coastline";
       }
       for (const b of panel.querySelectorAll('[data-act="frac"]')) b.classList.toggle("on", +b.dataset.v === S.frac);
+      for (const b of panel.querySelectorAll('[data-act="buyn"]')) b.classList.toggle("on", +b.dataset.v === S.buyN);
       for (const b of panel.querySelectorAll('[data-act="type"]')) b.classList.toggle("on", S.types[b.dataset.t]);
       for (const b of panel.querySelectorAll('[data-act="mode"]')) {
         b.disabled = !canAct(b.dataset.v);
@@ -580,11 +717,20 @@ WD.UI = (() => {
 
   function onPanelClick(ev) {
     const b = ev.target.closest("button");
+    // Upright phones: tapping the sheet's title bar folds it down to just that bar, and back up.
+    if (!b && sheetMq.matches && ev.target.closest(".p-head")) { S.sheetMin = !S.sheetMin; renderPanel(); return; }
     if (!b || b.disabled) return;
     const c = S.selected;
     switch (b.dataset.act) {
       case "close": select(-1); break;
-      case "buy": buy(c, b.dataset.t, ev.shiftKey ? 5 : 1); break;
+      case "buy": {
+        // Shift buys 5; touchscreens buy ×1, ×5 or ×10 per tap. Either way, no more than the treasury can pay for.
+        let n = ev.shiftKey ? 5 : S.touch ? S.buyN : 1;
+        if (n > 1) n = Math.max(1, Math.min(n, Math.floor(Game.state.empires[S.me].money / Game.unitCost(S.me, b.dataset.t))));
+        buy(c, b.dataset.t, n);
+        break;
+      }
+      case "buyn": S.buyN = +b.dataset.v; break;
       case "frac": S.frac = +b.dataset.v; updatePreview(S.hover); break;
       case "type": S.types[b.dataset.t] = !S.types[b.dataset.t]; updatePreview(S.hover); break;
       case "mode": trySetAction(b.dataset.v); break;
@@ -607,8 +753,11 @@ WD.UI = (() => {
     Bootcamp.tick();
     if (S.modal === "research") updateResearch();
     Guide.check(Game.cache.owned[S.me]?.length || 0);
-    // Keep the hovered country's tooltip and route preview current as the war moves on.
-    if (S.hover >= 0 && !$("tooltip").hidden) {
+    // Keep the hovered country's tooltip (or the tapped one's card) and route preview current as the war moves on.
+    if (S.target >= 0) {
+      updatePreview(S.target);
+      renderTargetCard();
+    } else if (S.hover >= 0 && !$("tooltip").hidden) {
       updatePreview(S.hover);
       setHover(S.hover);
     }
@@ -620,7 +769,8 @@ WD.UI = (() => {
     $("hudIncome").textContent = "+" + fmtRate(Game.incomeOf(S.me)) + "/s";
     const boost = Game.mobilization();
     $("hudBoost").hidden = boost < 1.02;
-    $("hudBoost").textContent = `Mobilization ×${boost.toFixed(1)}`;
+    const boostText = `<span class="lbl">Mobilization </span>×${boost.toFixed(1)}`;
+    if ($("hudBoost").innerHTML !== boostText) $("hudBoost").innerHTML = boostText;
     $("hudBoost").title = "Opening mobilization: extra income that fades out over the first few minutes";
     const nuclear = !!Game.mods(S.me).nuclear || me.nukes > 0;
     $("btnNukes").hidden = !nuclear;
@@ -646,20 +796,24 @@ WD.UI = (() => {
     label.classList.toggle("ceasefire", grace > 0);
     label.parentNode.title = grace > 0 ? "Rival empires won't attack anyone until the ceasefire ends (unless attacked first)" : "Game time";
     const ck = clockNow();
-    for (const b of document.querySelectorAll(".hud-speed button")) {
+    for (const b of document.querySelectorAll(".hud-speed button[data-speed]")) {
       const v = +b.dataset.speed;
       b.classList.toggle("on", v === 0 ? ck.paused : !ck.paused && v === ck.speed);
       b.title = isClient() ? "Only the host can pause or change the speed" : v === 0 ? "Pause (Space)" : `${v}× speed`;
     }
+    const cycle = document.querySelector(".hud-speed .spd-cycle");
+    if (cycle.textContent !== ck.speed + "×") cycle.textContent = ck.speed + "×";
     const banner = $("pauseBanner");
     banner.hidden = !ck.paused || S.modal === "over";
-    if (ck.paused) $("pauseText").textContent = isClient() ? "The host paused the game" : online() ? "Paused for everyone · Space to resume" : "Space to resume";
+    const resume = S.touch ? "tap ❚❚ to resume" : "Space to resume";
+    if (ck.paused) $("pauseText").textContent = isClient() ? "The host paused the game" : online() ? `Paused for everyone · ${resume}` : resume[0].toUpperCase() + resume.slice(1);
   }
 
   function renderLeaderboard() {
     const G = Game.state, box = $("leaderboard");
     if (!box.__rows) {
-      box.innerHTML = `<div class="lb-h">Power rankings</div>`;
+      // On phones the rankings fold into a chip that shows your place (see the stylesheet).
+      box.innerHTML = `<div class="lb-h">Power rankings <b class="lb-me"></b></div>`;
       box.__rows = new globalThis.Map();
       box.__order = "";
     }
@@ -671,6 +825,7 @@ WD.UI = (() => {
     const order = rows.map(r => r.e.id).join(",");
     const reorder = box.__order !== order;
     box.__order = order;
+    if (reorder) box.querySelector(".lb-me").textContent = `#${rows.findIndex(r => r.e.id === S.me) + 1}`;
     for (const { e, share, n } of rows) {
       let row = box.__rows.get(e.id);
       if (!row) {
@@ -711,10 +866,14 @@ WD.UI = (() => {
     }
     box.innerHTML = `<h4>Incoming attacks</h4>` + [...byDest.values()].slice(0, 5).map(g =>
       `<div class="alert-row" data-c="${g.dest}" title="Click to view"><span>${flag(g.dest, "sm")} ${esc(nameOf(g.dest))} <small style="color:var(--muted)">· ${Math.round(g.size)} troops</small></span><b>${Math.max(0, Math.ceil(g.eta))}s</b></div>`).join("");
-    const lb = $("leaderboard").getBoundingClientRect();
-    box.style.top = Math.round(lb.bottom + 10) + "px";
+    // Under the rankings; on phones under the folded rankings and contracts chips.
+    const above = compact() && !$("bounties").hidden ? $("bounties") : $("leaderboard");
+    box.style.top = Math.round((compact() ? chipBottom(above) : above.getBoundingClientRect().bottom) + 8) + "px";
     box.hidden = false;
   }
+
+  // Where a folded chip (the rankings or the contracts on a phone) ends, even while it's unfolded.
+  const chipBottom = box => box.querySelector(".lb-h, h4").getBoundingClientRect().bottom + 8;
 
   // ---------- contracts ----------
   function contractProgress(b) {
@@ -729,11 +888,11 @@ WD.UI = (() => {
   // h: height of the contracts box. The radar sits beside it, so the taller of the two counts.
   function fitPanel(h) {
     const mm = $("minimap");
-    const stack = Math.max(h, mm.hidden ? 0 : mm.offsetHeight + 10);
+    // Phones fold the contracts into a chip and place the panel themselves (see the stylesheet).
+    const stack = compact() ? 0 : Math.max(h, mm.hidden || !mm.offsetWidth ? 0 : mm.offsetHeight + 10);
     if (S.bountyH === stack) return;
     S.bountyH = stack;
-    // Phones stack the panel at the bottom instead (see the stylesheet).
-    $("panel").style.maxHeight = innerWidth > 760 ? `calc(100vh - ${(stack ? 118 : 112) + stack}px)` : "";
+    $("panel").style.maxHeight = stack ? `calc(100dvh - var(--top-h) - var(--sat) - var(--sab) - ${118 + stack}px)` : "";
   }
 
   function renderBounties() {
@@ -746,10 +905,13 @@ WD.UI = (() => {
       fitPanel(0);
       return;
     }
+    // On phones the contracts fold into a chip under the rankings chip.
+    const top = compact() ? Math.round(chipBottom($("leaderboard")) + 4) + "px" : "";
+    if (box.style.top !== top) box.style.top = top;
     const key = list.map(b => b.id).join(",");
     if (key !== S.bountyKey) {
       S.bountyKey = key;
-      box.innerHTML = `<h4>Contracts</h4>` + list.map(b => `
+      box.innerHTML = `<h4>Contracts <b class="b-n">${list.length}</b></h4>` + list.map(b => `
         <div class="bounty-row${b.target !== undefined ? " go" : ""}" data-id="${b.id}" ${b.target !== undefined ? `data-c="${b.target}" title="Click to view the target"` : ""}>
           <span class="b-ic">${b.icon}</span>
           <span class="b-body"><b>${esc(b.title)}</b><small class="b-prog"></small></span>
@@ -938,7 +1100,9 @@ WD.UI = (() => {
     closeChat();
     if (Map.ready()) { select(-1); Map.reset(); }
     setAction(null);
-    for (const id of ["hud", "leaderboard", "alerts", "panel", "pauseBanner", "mission", "bounties", "ticker", "banner"]) $(id).hidden = true;
+    for (const id of ["hud", "leaderboard", "alerts", "panel", "targetCard", "pauseBanner", "mission", "bounties", "ticker", "banner"]) $(id).hidden = true;
+    $("leaderboard").classList.remove("open");
+    $("bounties").classList.remove("open");
     Minimap.hide();
     closeConfirm(false);
     $("log").innerHTML = "";
@@ -1310,6 +1474,7 @@ WD.UI = (() => {
     S.speed = 1;
     S.modalPause = false;
     S.selected = -1;
+    S.sheetMin = false;
     S.panelKey = "";
     S.proposalKey = "";
     S.graceLeft = G.settings.tutorial ? 0 : WD.MODES[G.settings.mode].grace - G.time;
@@ -1340,10 +1505,11 @@ WD.UI = (() => {
     const mode = WD.MODES[G.settings.mode].name;
     $("hudSub").textContent = S.bootcamp ? "Boot Camp · Training"
       : online() ? `${isHost() ? "Host" : "Online"} · ${mode}` : `${mode} · ${WD.DIFFICULTY[G.settings.difficulty].name}`;
-    $("hudGoal").textContent = `· ${G.settings.teams === "coop" && G.settings.multiplayer ? "team " : ""}goal ${G.settings.victory}%`;
+    $("hudGoal").textContent = `${G.settings.teams === "coop" && G.settings.multiplayer ? "team " : ""}goal ${G.settings.victory}%`;
     $("hudGoalMark").style.left = `calc(${Math.min(100, G.settings.victory)}% - 1px)`;
     $("btnSave").hidden = isClient() || S.bootcamp;
     $("btnRoom").hidden = !isHost();
+    $("btnChat").hidden = !online();
     $("hudCode").textContent = Net.code || "";
     Map.recolorAll();
     select(-1);
@@ -1504,13 +1670,14 @@ WD.UI = (() => {
          <button data-m="help">⌨ Controls</button>
          <button data-m="quit">🏳 Leave the game</button>`
       : `<button data-m="resume">▶ ${online() ? "Back to the war" : "Resume"}</button>
-         <button data-m="saves">💾 ${online() ? "Save game" : "Save or load"}</button>
+         ${S.bootcamp ? "" : `<button data-m="saves">💾 ${online() ? "Save game" : "Save or load"}</button>`}
          <button data-m="settings">⚙ Settings</button>
-         <button data-m="help">⌨ Controls</button>
+         <button data-m="help">${S.touch ? "👆" : "⌨"} Controls</button>
          <button data-m="howto">❓ How to play</button>
          <button data-m="quit">🏳 ${online() ? "End the game for everyone" : "Quit to main menu"}</button>`;
+    const full = canFullscreen() ? `<button data-m="fullscreen">⛶ ${isFullscreen() ? "Leave fullscreen" : "Fullscreen"}</button>` : "";
     const lead = online() ? "The war keeps going while this menu is open." : "The war waits for you.";
-    openModal("menu", `<h2>${online() ? "Command menu" : "Paused"}</h2><p class="lead">${lead}</p><div class="menu-list">${items}</div>`);
+    openModal("menu", `<h2>${online() ? "Command menu" : "Paused"}</h2><p class="lead">${lead}</p><div class="menu-list">${items}${full}</div>`);
   }
 
   function openSaves() {
@@ -1533,6 +1700,20 @@ WD.UI = (() => {
   }
 
   function openHelp() {
+    if (S.touch) {
+      const taps = [
+        ["Select one of your nations", "Tap it"], ["See the odds, then attack", "Tap a target · ⚔ Attack"],
+        ["Zoom · move the map", "Pinch · drag"], ["Buy units", "Tap a unit card"],
+        ["Buy 5 or 10 per tap", "×5 · ×10"], ["Send part of the army", "Deploy · 25% to All"],
+        ["Air strike · bombard · missile", "Orders, then the target"], ["Cancel an order", "✕ on the gold bar"],
+        ["Deselect", "Tap the sea"], ["Shrink the panel", "Tap its title"],
+        ["Pause · game speed", "❚❚ · 1×"], ["Shop · Autopilot · Diplomacy", "🛒 · 🛡 · 🤝"],
+        ["Chat (online)", "💬"], ["Menu, saves and settings", "☰"],
+      ];
+      const grid = taps.map(([what, how]) => `<div><span>${what}</span><b>${how}</b></div>`).join("");
+      openModal("help", `<h2>Controls</h2><div class="keys-grid">${grid}</div><div class="foot"><button class="ghost" data-m="close">Close</button></div>`);
+      return;
+    }
     const keys = [
       ["Select a country", "Left-click"], ["Move or attack", "Right-click"],
       ["Preview route & odds", "Hover"], ["Zoom / pan", "Scroll / drag"],
@@ -1913,6 +2094,7 @@ WD.UI = (() => {
       case "help": openHelp(); break;
       case "settings": openSettings(); break;
       case "replay": openReplay(); break;
+      case "fullscreen": closeModal(); toggleFullscreen(); break;
       case "backover": if (S.overInfo) renderOver(); else closeModal(); break;
       case "launch": closeModal(); trySetAction("nuke"); break;
       case "buildnuke":
@@ -1950,10 +2132,69 @@ WD.UI = (() => {
     updateHud();
   }
 
+  // Touch or mouse: whichever the player used last. Phones start in touch mode, and a laptop with a
+  // touchscreen switches back to mouse controls as soon as the mouse moves.
+  function setTouch(on) {
+    if (S.touch === on) return;
+    S.touch = on;
+    document.body.classList.toggle("touch", on);
+    closeTargetCard();
+    if (S.action) setAction(S.action);
+    if (on) { $("tooltip").hidden = true; if (S.hover >= 0) { S.hover = -1; Map.hover(-1); updatePreview(-1); } }
+  }
+
+  // Fullscreen hides the browser's bars on phones. iPhones can't do it for a web page, but the game
+  // runs fullscreen there once it's added to the home screen.
+  const canFullscreen = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function toggleFullscreen() {
+    const d = document, el = d.documentElement;
+    const req = isFullscreen() ? (d.exitFullscreen || d.webkitExitFullscreen).call(d)
+      : (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: "hide" });
+    Promise.resolve(req).catch(() => toast("This browser won't go fullscreen here.", "bad"));
+  }
+  const standalone = () => matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches || navigator.standalone === true;
+  const iOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // The part of the screen where the map shows: below the top bar and above the news ticker (and on
+  // upright phones above the sheet). The map centers what it jumps to and places attack arrows inside it.
+  function mapInsets() {
+    const ticker = $("ticker");
+    let top = 0;
+    for (const id of ["hud", "coach", "mission"]) if (!$(id).hidden) top = Math.max(top, $(id).getBoundingClientRect().bottom);
+    let bottom = ticker.hidden ? 0 : innerHeight - ticker.getBoundingClientRect().top;
+    if (sheetMq.matches) for (const id of ["panel", "targetCard"]) if (!$(id).hidden) bottom = Math.max(bottom, innerHeight - $(id).getBoundingClientRect().top);
+    return { top, bottom };
+  }
+
+  // Phones stack things: the coach under the top bar, chips under the coach, the log over the sheet.
+  // The stylesheet places them with these sizes, kept current as the elements change size.
+  function watchSizes() {
+    const root = document.documentElement.style;
+    const update = () => {
+      const coach = $("coach").offsetHeight, mission = $("mission").offsetHeight;
+      root.setProperty("--coach-h", coach ? coach + 6 + "px" : "0px");
+      root.setProperty("--top-h", coach || mission ? (coach || mission) + 6 + "px" : "0px");
+      const sheet = sheetMq.matches ? Math.max($("panel").offsetHeight, $("targetCard").offsetHeight) : 0;
+      root.setProperty("--sheet-h", sheet ? sheet + 4 + "px" : "0px");
+    };
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(update);
+      for (const id of ["coach", "mission", "panel", "targetCard"]) ro.observe($(id));
+    }
+    compactMq.addEventListener?.("change", update);
+    sheetMq.addEventListener?.("change", update);
+    update();
+  }
+
   function bindUI() {
     // Browsers only allow sound after the first click or key press.
     addEventListener("pointerdown", () => Sound.unlock(), true);
     addEventListener("keydown", () => Sound.unlock(), true);
+    document.body.classList.toggle("touch", S.touch);
+    addEventListener("pointerdown", ev => setTouch(ev.pointerType !== "mouse"), true);
+    addEventListener("pointermove", ev => { if (ev.pointerType === "mouse" && (ev.movementX || ev.movementY)) setTouch(false); }, true);
+    watchSizes();
     document.addEventListener("click", ev => {
       const b = ev.target.closest("button");
       if (b && !b.disabled && !b.closest("#panel .units-grid")) Sound.play("click");
@@ -1969,7 +2210,28 @@ WD.UI = (() => {
       if (ev.target.dataset.set === "volume") Sound.set({ volume: +ev.target.value });
       if (ev.target.dataset.auto === "budget") autoBudgetLabel(+ev.target.value);
     });
-    $("leaderboard").addEventListener("click", ev => { if (ev.target.closest(".lb-row")) renderDiplomacy(); });
+    // On phones the rankings and the contracts are chips: tapping the title unfolds them.
+    const fold = (box, ev, head) => {
+      if (!compact() || !ev.target.closest(head)) return false;
+      box.classList.toggle("open");
+      return true;
+    };
+    $("leaderboard").addEventListener("click", ev => { if (!fold($("leaderboard"), ev, ".lb-h") && ev.target.closest(".lb-row")) renderDiplomacy(); });
+    $("targetCard").addEventListener("click", onTargetClick);
+    $("modeHint").addEventListener("click", ev => { if (ev.target.closest(".mh-x")) setAction(null); });
+    $("btnChat").addEventListener("click", openChat);
+    $("btnFull").hidden = !canFullscreen();
+    $("btnFull").addEventListener("click", toggleFullscreen);
+    // iPhones can't go fullscreen from the browser: suggest the home screen instead.
+    $("installTip").hidden = !iOS() || standalone();
+    let installPrompt = null;
+    addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); installPrompt = ev; $("btnInstall").hidden = false; });
+    $("btnInstall").addEventListener("click", () => {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      installPrompt = null;
+      $("btnInstall").hidden = true;
+    });
     $("alerts").addEventListener("click", ev => { const r = ev.target.closest(".alert-row"); if (r) Map.focus(+r.dataset.c); });
     $("btnDiplomacy").addEventListener("click", renderDiplomacy);
     $("btnTech").addEventListener("click", () => openResearch());
@@ -1983,6 +2245,7 @@ WD.UI = (() => {
       toast(`${perk.icon} ${perk.name}: ${perk.desc}`);
     });
     $("bounties").addEventListener("click", ev => {
+      if (fold($("bounties"), ev, "h4")) return;
       const row = ev.target.closest("[data-c]");
       if (row) Map.focus(+row.dataset.c);
     });
@@ -2019,7 +2282,8 @@ WD.UI = (() => {
     $("btnMenuSettings").addEventListener("click", openSettings);
     $("btnSound").addEventListener("click", () => { Sound.unlock(); Sound.set({ muted: !Sound.settings.muted }); applySettings(); });
     $("btnRoom").addEventListener("click", copyInvite);
-    for (const b of document.querySelectorAll(".hud-speed button")) b.addEventListener("click", () => setSpeed(+b.dataset.speed));
+    for (const b of document.querySelectorAll(".hud-speed button[data-speed]")) b.addEventListener("click", () => setSpeed(+b.dataset.speed));
+    document.querySelector(".hud-speed .spd-cycle").addEventListener("click", () => setSpeed({ 1: 2, 2: 4, 4: 1 }[clockNow().speed] || 1));
 
     $("selCountry").addEventListener("change", ev => { const c = +ev.target.value; if (c >= 0) chooseCountry(c); });
     $("btnRandom").addEventListener("click", () => {

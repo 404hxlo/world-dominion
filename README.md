@@ -12,6 +12,12 @@ A real-time world-conquest game in the browser. Pick any nation, raise armies, f
 
 The host's browser runs the war, so the host keeps the game open. Up to 8 players.
 
+## On phones
+
+The game plays in mobile browsers, upright or sideways. Tap one of your nations to select it, tap a target to see your odds and attack, and pinch to zoom. To play fullscreen without the browser bars, add the game to your home screen: on an iPhone, Share → Add to Home Screen; on Android, the 📲 button on the title screen or Install app in the browser menu.
+
+Phones pause web pages that aren't on screen, so a host on a phone should keep the game open in front.
+
 ## Offline copy
 
 `share/World-Dominion.html` is the whole game in one file, for sending to someone directly. Rebuild it after changing the game with `node tools/bundle.js`.

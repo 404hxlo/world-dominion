@@ -36,7 +36,8 @@ WD.Minimap = (() => {
   const toward = (from, to) => from + ((((to - from) % 360) + 540) % 360 - 180);
 
   function draw() {
-    if (!shown) return;
+    // Phones hide the radar (see the stylesheet), so there's nothing to draw.
+    if (!shown || !el.offsetWidth) return;
     const view = hooks.view();
     if (view.center) {
       // Ease toward the battle map's center rather than snapping to it.

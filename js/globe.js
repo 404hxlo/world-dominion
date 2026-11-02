@@ -58,16 +58,25 @@ WD.Globe = (() => {
     addEventListener("resize", () => { if (running) resize(); });
   }
 
+  // The globe sits beside the menu, or above it on an upright phone, where the menu is a sheet
+  // covering the bottom two thirds (the same breakpoints as the stylesheet).
   function resize() {
     dpr = Math.min(1.5, window.devicePixelRatio || 1);
     w = innerWidth;
     h = innerHeight;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
-    const side = w >= 760 ? MENU_W : 0;
-    cx = side + (w - side) / 2;
-    cy = h / 2 + 10;
-    r = side ? Math.min((w - side) * 0.4, h * 0.38) : Math.min(w, h) * 0.46;
+    if (matchMedia("(max-width: 640px) and (orientation: portrait)").matches) {
+      const room = h * 0.33;
+      cx = w / 2;
+      cy = room / 2 + 6;
+      r = Math.min(w * 0.42, room * 0.4);
+    } else {
+      const side = matchMedia("(max-height: 520px) and (orientation: landscape)").matches ? 384 : w >= 760 ? MENU_W : 0;
+      cx = side + (w - side) / 2;
+      cy = h / 2 + 10;
+      r = side ? Math.min((w - side) * 0.4, h * 0.38) : Math.min(w, h) * 0.46;
+    }
     proj.translate([cx, cy]).scale(r);
   }
 

@@ -2,8 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The map handles its own pinch zoom, so the page itself never zooms. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>World Dominion</title>
+  <meta name="description" content="Real-time world conquest in the browser. Raise armies, make and break alliances, and conquer the planet, alone or with friends.">
+  <meta name="theme-color" content="#0b0d10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dominion">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Russo+One&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -36,7 +46,7 @@
     </div>
     <div class="hud-block stat hud-nations" title="Nations you control"><span class="k">Nations</span><span class="v"><i class="ic">🏳</i><span id="hudCountries"></span></span></div>
     <div class="hud-block stat hud-control" title="Share of world economic power you control">
-      <span class="k">World control <small id="hudGoal"></small></span>
+      <span class="k"><span class="lbl">World control · </span><small id="hudGoal"></small></span>
       <div class="bar"><div id="hudBar"></div><div class="goal" id="hudGoalMark"></div></div>
       <span class="v" id="hudShare"></span>
     </div>
@@ -46,9 +56,12 @@
       <button data-speed="1">1×</button>
       <button data-speed="2">2×</button>
       <button data-speed="4">4×</button>
+      <!-- Narrow screens show one button that steps through the speeds instead of three. -->
+      <button class="spd-cycle" title="Game speed">1×</button>
     </div>
     <div class="hud-actions">
       <button id="btnRoom" class="hbtn" hidden title="Room code: click to copy the invite link for friends who want to join or rejoin">🌐 <span id="hudCode"></span></button>
+      <button id="btnChat" class="hbtn icon" hidden title="Chat with the other players (Enter)">💬</button>
       <button id="btnNukes" class="hbtn nukes" hidden title="Nuclear strike (N)">☢ <span id="hudNukes"></span></button>
       <button id="btnAuto" class="hbtn auto" title="Autopilot: how your nations look after themselves (P)">🛡 <span class="lbl">Autopilot</span> <b id="hudAuto"></b></button>
       <button id="btnTech" class="hbtn shop" title="Shop: research and supplies (U)">🛒 <span class="lbl">Shop</span></button>
@@ -63,6 +76,8 @@
   <aside id="leaderboard" class="frame" hidden></aside>
   <div id="alerts" class="frame" hidden></div>
   <aside id="panel" class="frame" hidden></aside>
+  <!-- Touchscreens: the odds and orders for a tapped target (instead of hover and right-click). -->
+  <div id="targetCard" class="frame" hidden></div>
   <aside id="bounties" class="frame" hidden></aside>
   <div id="minimap" hidden><canvas title="Click to jump there"></canvas><span class="mm-glass"></span><span class="mm-label">Radar</span></div>
   <div id="mission" class="frame" hidden></div>
@@ -88,11 +103,16 @@
 
   <!-- Main menu -->
   <section id="menu" class="frame" hidden>
-    <button id="btnMenuSettings" class="hbtn icon menu-gear" title="Settings">⚙</button>
+    <div class="menu-tools">
+      <button id="btnInstall" class="hbtn icon" hidden title="Install the game as an app">📲</button>
+      <button id="btnFull" class="hbtn icon" hidden title="Fullscreen">⛶</button>
+      <button id="btnMenuSettings" class="hbtn icon" title="Settings">⚙</button>
+    </div>
     <h1 class="logo">WORLD <span>DOMINION</span></h1>
     <p class="tagline">Global conflict command · Raise armies, build fleets, make and break alliances, and conquer the planet.</p>
 
     <div id="menuMain">
+    <div id="installTip" class="box tip-box" hidden><b>📲 Play fullscreen:</b> tap <b>Share</b>, then <b>Add to Home Screen</b>. The game opens like an app, without the browser bars.</div>
     <div id="careerBox" class="box career"></div>
 
     <div id="bootBox" class="box bootcamp"></div>
@@ -108,7 +128,7 @@
       <div id="setupSlot">
         <div id="setupBlock">
           <div class="field">
-            <span>Your nation <em>(or click the map)</em></span>
+            <span>Your nation <em class="mouse-only">(or click the globe)</em><em class="touch-only">(or tap the globe)</em></span>
             <div class="row">
               <select id="selCountry" aria-label="Your nation"></select>
               <button id="btnRandom" class="ghost" title="Random nation">🎲</button>
@@ -193,10 +213,14 @@
       <summary>How to play</summary>
       <ul>
         <li>New here? <b>Boot Camp</b> (top of this menu) walks you through everything in 3 minutes.</li>
-        <li><b>Left-click</b> one of your countries to select it. <b>Right-click</b> any other country to send troops. Hover a target first to see the route, the travel time and your odds.</li>
-        <li>Buy units in the side panel. Hold <b>Shift</b> to buy 5. Hotkeys: <b>Q</b> infantry, <b>W</b> tanks, <b>E</b> artillery, <b>R</b> warships, <b>T</b> aircraft, <b>Y</b> missiles.</li>
-        <li><b>1–4</b> sets how much of the army to send (25% to all). <b>G</b> lets you pick a target with left-click.</li>
-        <li><b>A</b> air strike (aircraft fly 3,500 km, bomb, then return). <b>B</b> artillery bombards a neighbor nonstop. <b>M</b> fires a missile up to 6,000 km.</li>
+        <li class="mouse-only"><b>Left-click</b> one of your countries to select it. <b>Right-click</b> any other country to send troops. Hover a target first to see the route, the travel time and your odds.</li>
+        <li class="touch-only"><b>Tap</b> one of your countries to select it. Then <b>tap</b> any other country to see the route, the travel time and your odds, and tap <b>⚔ Attack</b>. <b>Pinch</b> to zoom and <b>drag</b> to pan.</li>
+        <li class="mouse-only">Buy units in the side panel. Hold <b>Shift</b> to buy 5. Hotkeys: <b>Q</b> infantry, <b>W</b> tanks, <b>E</b> artillery, <b>R</b> warships, <b>T</b> aircraft, <b>Y</b> missiles.</li>
+        <li class="touch-only">Buy units by tapping the unit cards in the panel. <b>×5</b> and <b>×10</b> buy more with each tap.</li>
+        <li class="mouse-only"><b>1–4</b> sets how much of the army to send (25% to all). <b>G</b> lets you pick a target with left-click.</li>
+        <li class="touch-only"><b>Deploy</b> sets how much of the army to send, from 25% to all of it.</li>
+        <li class="mouse-only"><b>A</b> air strike (aircraft fly 3,500 km, bomb, then return). <b>B</b> artillery bombards a neighbor nonstop. <b>M</b> fires a missile up to 6,000 km.</li>
+        <li class="touch-only"><b>Orders</b> in the panel: ✈️ air strike (aircraft fly 3,500 km, bomb, then return), 💥 bombard a neighbor nonstop, 🚀 missile up to 6,000 km. Tap the order, then the target.</li>
         <li>Warships make sea crossings faster and smash enemy landings. Without ships, troops landing from the sea fight at a penalty.</li>
         <li>Big economies (USA, China, Germany…) pay more and count more toward victory. Grab them!</li>
         <li>Every nation has a <b>superpower</b>, like Russian winter or island fortresses. Yours is the icon next to your flag.</li>
@@ -206,10 +230,10 @@
         <li>Your nations raise free <b>militia</b> (🛡) that guard them. The <b>Autopilot</b> (P) spends part of your income on defenders where attacks are coming, moves idle troops to threatened borders and strikes back at lost nations.</li>
         <li>Complete <b>contracts</b> (bottom right) for cash. Watch the world news for disasters, revolutions, arms deals and coups.</li>
         <li>With <b>fog of war</b> on, enemy troops show as ? until your land, armies or aircraft are close.</li>
-        <li><b>Space</b> pauses. Scroll to zoom, drag to pan. Open <b>Diplomacy</b> to offer peace or alliances. Allies let your armies pass through.</li>
+        <li><span class="mouse-only"><b>Space</b> pauses. Scroll to zoom, drag to pan.</span><span class="touch-only"><b>❚❚</b> pauses.</span> Open <b>Diplomacy</b> to offer peace or alliances. Allies let your armies pass through.</li>
         <li>Red dashed routes and arrows at the screen edge warn you about incoming attacks. Click an arrow to jump there.</li>
-        <li>Online: the host runs the game. Press <b>Enter</b> to chat. If someone drops out, the AI looks after their empire until they rejoin with the same name.</li>
-        <li>Earn experience and medals in every war to rank up and unlock empire colors and titles. Press <b>H</b> for all controls.</li>
+        <li>Online: the host runs the game. <span class="mouse-only">Press <b>Enter</b></span><span class="touch-only">Tap <b>💬</b></span> to chat. If someone drops out, the AI looks after their empire until they rejoin with the same name.</li>
+        <li>Earn experience and medals in every war to rank up and unlock empire colors and titles.<span class="mouse-only"> Press <b>H</b> for all controls.</span></li>
       </ul>
     </details>
     </div>
