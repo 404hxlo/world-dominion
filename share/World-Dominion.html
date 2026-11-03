@@ -865,9 +865,67 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 .shop-card .s-lock { display: flex; flex-direction: column; align-items: center; gap: 2px; font: 400 11px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #5a1a10; }
 .shop-card .s-lock i { font-style: normal; font-size: 18px; }
 .shop-note { margin: 12px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+.tab i { font-style: normal; }
+.shop-card.active { box-shadow: inset 0 1px 0 #fff, 0 0 0 2px var(--good), 0 0 16px rgba(107, 214, 94, 0.45), 0 6px 12px rgba(0, 0, 0, 0.45); }
+.shop-card .s-timer { min-height: 14px; font: 400 10.5px var(--display); color: #2c7a12; letter-spacing: 0.04em; text-transform: uppercase; }
+.shop-card.crate .s-art { background: radial-gradient(circle at 50% 38%, #fff6d0, #ffd055 55%, #c27a0c); }
+.crate-note { display: inline-block; margin-bottom: 4px; padding: 3px 10px; border-radius: 6px; font: 600 12.5px var(--font); color: #fff; background: #4b525a; }
+.crate-note.uncommon { background: #2f7a1c; }
+.crate-note.rare { background: #1f5fae; }
+.crate-note.epic { background: linear-gradient(90deg, #7b2fbe, #c43ad6); }
+
+/* ---------- research tree ---------- */
+/* One column per branch and one row per tier. The lines between technologies are an SVG
+   stretched over the grid, drawn in grid units. */
+.shop-body.is-tree { padding: 12px 36px; }
+.tree-wrap { overflow-x: auto; overscroll-behavior: contain; padding: 8px 0 2px; }
+.tree { min-width: 560px; }
+/* The shop is wider than other windows, so the whole tree fits. */
+@media (min-width: 800px) { .modal-card[data-modal="research"] { width: 780px; } }
+.tree-heads, .tree-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); column-gap: 8px; }
+.tree-heads span { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.tree-heads i { font-style: normal; font-size: 17px; line-height: 1; }
+.tree-heads b { font: 400 9.5px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 1px #000; }
+.tree-grid { position: relative; grid-template-rows: repeat(var(--rows), 88px); margin-top: 6px; }
+.tree-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.tree-lines line { stroke: rgba(15, 17, 20, 0.55); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.tree-lines line.on { stroke: var(--gold); }
+.tnode {
+  position: relative; z-index: 1; align-self: center; justify-self: center; width: 100%; max-width: 92px; height: 66px; padding: 4px 3px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 9px; color: #1c1f23;
+  background: linear-gradient(180deg, #e7eaee, #b9c0c8); border: 1px solid #000; box-shadow: inset 0 1px 0 #fff, 0 3px 0 #1a1c20;
+  transition: transform 0.08s, filter 0.15s;
+}
+.tnode:hover { filter: brightness(1.08); }
+.tnode:active { transform: translateY(1px); }
+.tnode i { font-style: normal; font-size: 22px; line-height: 1; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.3)); }
+.tnode b { font: 400 9px var(--display); letter-spacing: 0.02em; text-transform: uppercase; text-align: center; line-height: 1.15; }
+.tnode em { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 400 11px var(--display); font-style: normal; border: 1px solid #000; background: #2a2e33; }
+.tnode.owned { background: linear-gradient(180deg, #e3ffcf, #8fd968); }
+.tnode.owned em { color: #fff; background: var(--green-face); }
+.tnode.open { box-shadow: inset 0 1px 0 #fff, 0 3px 0 #1a1c20, 0 0 0 2px var(--gold), 0 0 12px rgba(255, 200, 80, 0.45); }
+.tnode.open.poor { box-shadow: inset 0 1px 0 #fff, 0 3px 0 #1a1c20, 0 0 0 2px rgba(255, 200, 80, 0.4); }
+.tnode.locked { filter: grayscale(1) brightness(0.62); }
+.tnode.locked em { font-size: 10px; }
+.tnode.sel { outline: 3px solid #fff; outline-offset: 2px; }
+.tech-info { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 12px; border-radius: 9px; background: var(--well); border: 1px solid #050608; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.62); }
+.ti-icon { flex: none; font-size: 30px; }
+.ti-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ti-body small { font: 400 9.5px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ti-body b { font: 400 15px var(--display); color: var(--gold-2); text-shadow: 0 1px 0 #000; }
+.ti-body span { font-size: 12.5px; color: #e3e7ec; line-height: 1.35; }
+.ti-act { flex: none; }
+.ti-act .primary { padding: 9px 14px; white-space: nowrap; }
+.ti-lock { display: block; max-width: 170px; font-size: 12px; color: var(--warn); text-align: right; }
+.ti-done { font: 400 12px var(--display); color: var(--good); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Running boosts and their time left, under the top bar beside the panel. */
+#boosts { position: fixed; top: calc(var(--hud-h) + var(--sat) + 12px); right: calc(344px + var(--sar)); z-index: 6; display: flex; gap: 6px; pointer-events: none; }
+#boosts span { padding: 4px 9px; border-radius: 999px; font: 400 12px var(--display); font-variant-numeric: tabular-nums; color: #102806; background: var(--green-face); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5); }
 
 /* ---------- autopilot ---------- */
 .auto-list { display: flex; flex-direction: column; gap: 8px; }
+.auto-h { margin: 8px 0 0; font: 400 11.5px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-2); text-align: center; }
 .auto-budget { display: flex; align-items: center; gap: 12px; }
 .auto-budget input { flex: 1; }
 .auto-budget b { min-width: 98px; text-align: right; font: 400 15px var(--display); color: var(--gold-2); }
@@ -1056,6 +1114,24 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   /* Phones zoom into small text fields when they get focus. */
   select, #mpName, #mpCode, #chatInput { font-size: 16px; }
   .menu-tools { position: fixed; top: calc(10px + var(--sat)); right: calc(10px + var(--sar)); z-index: 41; }
+  /* The research tree shrinks and scrolls sideways. */
+  .shop-body.is-tree { padding: 10px 26px; }
+  .tree { min-width: 420px; }
+  .tree-heads, .tree-grid { column-gap: 5px; }
+  .tree-heads i { font-size: 14px; }
+  .tree-heads b { font-size: 7.5px; letter-spacing: 0.04em; }
+  .tree-grid { grid-template-rows: repeat(var(--rows), 70px); }
+  .tnode { max-width: 66px; height: 56px; padding: 3px 2px; gap: 2px; }
+  .tnode i { font-size: 18px; }
+  .tnode b { font-size: 7.5px; }
+  .tnode em { width: 17px; height: 17px; font-size: 9.5px; top: -6px; right: -6px; }
+  .tech-info { flex-wrap: wrap; gap: 6px 10px; padding: 9px 10px; }
+  .ti-icon { font-size: 24px; }
+  .ti-body { flex-basis: calc(100% - 44px); }
+  .ti-act { flex-basis: 100%; }
+  .ti-act .primary { width: 100%; }
+  .ti-lock { max-width: none; text-align: left; }
+  #boosts { top: calc(var(--hud-h) + var(--sat) + 8px + var(--top-h)); right: calc(6px + var(--sar)); }
 }
 
 /* ---------- phones held upright ---------- */
@@ -1116,6 +1192,11 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   body.targeting #panel { display: none; }
   #targetCard { left: calc(4px + var(--sal)); right: calc(4px + var(--sar)); bottom: calc(var(--foot-h) + var(--sab) + 4px); width: auto; transform: none; border-radius: 14px 14px 9px 9px; }
 
+  /* Four shop tabs: only the open one keeps its name. */
+  .tab span { display: none; }
+  .tab.on span { display: inline; }
+  .tab i { font-size: 15px; }
+
   #menu { top: 33%; left: 0; right: 0; bottom: 0; width: auto; padding: 18px 12px calc(16px + var(--sab)); border-radius: 18px 18px 0 0; }
   #menu .logo { font-size: 28px; }
   .tagline { margin: 8px 0 12px; font-size: 11.5px; }
@@ -1174,6 +1255,9 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   .shop-card .s-art { width: 44px; height: 44px; font-size: 22px; }
   .shop-note { margin-top: 6px; }
   .modal-card .foot { margin-top: 8px; }
+  #boosts { right: calc(290px + var(--sar)); }
+  .tree-grid { grid-template-rows: repeat(var(--rows), 62px); }
+  .tnode { height: 52px; }
 }
 
 </style>
@@ -1238,6 +1322,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   <!-- Touchscreens: the odds and orders for a tapped target (instead of hover and right-click). -->
   <div id="targetCard" class="frame" hidden></div>
   <aside id="bounties" class="frame" hidden></aside>
+  <div id="boosts" hidden></div>
   <div id="minimap" hidden><canvas title="Click to jump there"></canvas><span class="mm-glass"></span><span class="mm-label">Radar</span></div>
   <div id="mission" class="frame" hidden></div>
   <div id="coach" class="frame" hidden></div>
@@ -1383,11 +1468,12 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
         <li>Warships make sea crossings faster and smash enemy landings. Without ships, troops landing from the sea fight at a penalty.</li>
         <li>Big economies (USA, China, Germany…) pay more and count more toward victory. Grab them!</li>
         <li>Every nation has a <b>superpower</b>, like Russian winter or island fortresses. Yours is the icon next to your flag.</li>
+        <li>The <b>Shop</b> (🛒) has a <b>research tree</b> where each upgrade opens the next, supply packs, <b>special ops</b> (sabotage, paratroopers, spies, coups, an orbital laser) and <b>boosts</b>. Anything you buy again costs more each time.</li>
         <li><b>Capitals</b> (★) defend harder. Take an enemy capital to loot half its treasury and split its empire in a civil war. Guard yours!</li>
         <li>Armies that win battles earn up to 3 <b>veteran stars</b> and fight harder. Fresh recruits dilute them.</li>
-        <li><b>U</b> opens the Shop: research that applies instantly, up to the Nuclear Program, and ready-made forces delivered to your capital. <b>N</b> fires a nuke, but the whole world will turn on you.</li>
+        <li>Nuclear warheads (after the Nuclear Program research) wreck a nation, but the whole world will turn on you.<span class="mouse-only"> <b>U</b> opens the Shop and <b>N</b> fires a nuke.</span></li>
         <li>Every nation you hold <b>trains troops on its own</b> (🪖 in the panel), faster in big economies, up to a limit per nation. Send them to the front and more arrive. Buying is still the fastest way to grow an army.</li>
-        <li>Your nations raise free <b>militia</b> (🛡) that guard them. The <b>Autopilot</b> (P) spends part of your income on defenders where attacks are coming, moves idle troops to threatened borders and strikes back at lost nations.</li>
+        <li>Your nations raise free <b>militia</b> (🛡) that guard them. The <b>Autopilot</b> (🛡 button) spends part of your income on defenders where attacks are coming, moves idle troops to threatened borders and strikes back at lost nations. Its <b>smart troops</b> also gather idle armies at the front, take weak independent neighbors, pull out of lost battles, and (if you switch it on) attack enemies.</li>
         <li>Complete <b>contracts</b> (bottom right) for cash. Watch the world news for disasters, revolutions, arms deals and coups.</li>
         <li>With <b>fog of war</b> on, enemy troops show as ? until your land, armies or aircraft are close.</li>
         <li><span class="mouse-only"><b>Space</b> pauses. Scroll to zoom, drag to pan.</span><span class="touch-only"><b>❚❚</b> pauses.</span> Open <b>Diplomacy</b> to offer peace or alliances. Allies let your armies pass through.</li>
@@ -1438,7 +1524,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 window.WD = window.WD || {};
 
 // Multiplayer only connects players whose game files have the same version.
-WD.VERSION = "1.4";
+WD.VERSION = "1.5";
 WD.MAX_PLAYERS = 8;
 // Where the game is published online. Invite links point here when the game was opened from disk.
 WD.GAME_URL = "https://404hxlo.github.io/world-dominion/";
@@ -1504,6 +1590,15 @@ WD.RULES = {
   recruitTime: 240,        // seconds an empty nation takes to train up to that limit
   recruitTanks: 0.2,       // share of those recruits that are tanks, in nations worth recruitTankValue or more
   recruitTankValue: 4,
+  priceRise: 0.35,         // each purchase of a shop item you can buy again adds this share of its first price
+  sabotageKill: 0.4,       // share of the ground troops sabotage destroys (cyberSabotage with Cyber Warfare)
+  cyberSabotage: 0.6,
+  paraTroops: 25,          // infantry in a paratrooper drop
+  spySteal: 0.2,           // share of the target's treasury a spy mission takes (doubled by Cyber Warfare)
+  spyMax: 2000,            // most a spy mission can take (before Cyber Warfare and the game mode's economy)
+  spySecs: 120,            // seconds a spy mission shows the target empire's land through the fog
+  coupPerValue: 150,       // a coup costs this much more per point of the nation's economy
+  orbitalKill: 0.7,        // share of everything in the target nation an orbital strike destroys
   autoBudget: 0.2,         // default share of income the autopilot may spend on defenders
   autoFundSecs: 40,        // the autopilot saves at most this many seconds of its budget
   touchSecs: 45,           // the autopilot leaves nations you gave orders in alone this long
@@ -1666,33 +1761,89 @@ WD.perkFor = c => {
 };
 
 // ---------- research ----------
-// A tier opens once an empire owns `needs` technologies. Costs scale with the game mode's economy.
+// Research is a tree: six branches of up to four tiers. A technology opens once everything in its
+// `needs` is researched, and its tier sets the price (scaled by the game mode's economy).
+// players: only human players research it. The AI keeps to the original twelve, whose needs stay
+// among themselves.
 WD.TECH_TIERS = [
-  { name: "Tier I", cost: 450, needs: 0 },
-  { name: "Tier II", cost: 900, needs: 2 },
-  { name: "Tier III", cost: 1600, needs: 4 },
+  { name: "Tier I", cost: 450 },
+  { name: "Tier II", cost: 900 },
+  { name: "Tier III", cost: 1600 },
+  { name: "Tier IV", cost: 2600 },
+];
+WD.TECH_BRANCHES = [
+  { icon: "🪖", name: "Army" }, { icon: "⚡", name: "Armor" }, { icon: "✈️", name: "Air & Sea" },
+  { icon: "🛰️", name: "Intel" }, { icon: "🏭", name: "Economy" }, { icon: "🏰", name: "Defense" },
 ];
 WD.TECHS = {
-  conscription: { tier: 0, icon: "🪖", name: "Conscription", desc: "Infantry costs 30% less.", fx: { cheap: { inf: 0.3 } } },
-  blitz:        { tier: 0, icon: "⚡", name: "Blitzkrieg", desc: "Land armies march 30% faster.", fx: { speed: 0.3 } },
-  artillery:    { tier: 0, icon: "💥", name: "Precision Artillery", desc: "Artillery bombardment does twice the damage.", fx: { bombard: 1 } },
-  propaganda:   { tier: 0, icon: "📣", name: "Propaganda", desc: "Conquered nations pay full income twice as fast and rarely revolt.", fx: { integrate: 1, calm: 0.6 } },
-  armor:        { tier: 1, icon: "🛡️", name: "Heavy Armor", desc: "Tanks attack and defend 35% harder.", fx: { tank: 0.35 } },
-  marines:      { tier: 1, icon: "⚓", name: "Marines", desc: "Your sea landings fight at full strength, and troop transports sail at full speed.", fx: { marines: 1 } },
-  academy:      { tier: 1, icon: "🎖️", name: "Military Academy", desc: "New recruits arrive as 1-star veterans.", fx: { recruitVet: 1 } },
-  economy:      { tier: 1, icon: "🏭", name: "War Economy", desc: "+20% income.", fx: { income: 0.2 } },
-  stealth:      { tier: 2, icon: "🛩️", name: "Stealth Bombers", desc: "Air strikes slip past interceptors, hit 50% harder and fly 50% farther.", fx: { stealth: 1, airDamage: 0.5, airRange: 0.5 } },
-  shield:       { tier: 2, icon: "🛰️", name: "Missile Shield", desc: "Shoots down 75% of missiles and 50% of nukes aimed at your land.", fx: { shield: 0.75, nukeShield: 0.5 } },
-  satellites:   { tier: 2, icon: "📡", name: "Spy Satellites", desc: "See through the fog of war everywhere, and missiles reach any target on Earth.", fx: { satellites: 1 } },
-  nuclear:      { tier: 2, icon: "☢️", name: "Nuclear Program", desc: "Build nuclear warheads that can strike anywhere on Earth.", fx: { nuclear: 1 } },
+  conscription:  { tier: 0, col: 0, needs: [], icon: "🪖", name: "Conscription", desc: "Infantry costs 30% less.", fx: { cheap: { inf: 0.3 } } },
+  blitz:         { tier: 0, col: 1, needs: [], icon: "⚡", name: "Blitzkrieg", desc: "Land armies march 30% faster.", fx: { speed: 0.3 } },
+  artillery:     { tier: 0, col: 2, needs: [], icon: "💥", name: "Precision Artillery", desc: "Artillery bombardment does twice the damage.", fx: { bombard: 1 } },
+  propaganda:    { tier: 0, col: 4, needs: [], icon: "📣", name: "Propaganda", desc: "Conquered nations pay full income twice as fast and rarely revolt.", fx: { integrate: 1, calm: 0.6 } },
+  drill:         { tier: 0, col: 5, needs: [], icon: "🎓", name: "Drill Sergeants", desc: "Your nations train troops 50% faster.", fx: { train: 0.5 }, players: true },
+  academy:       { tier: 1, col: 0, needs: ["conscription"], icon: "🎖️", name: "Military Academy", desc: "New recruits arrive as 1-star veterans.", fx: { recruitVet: 1 } },
+  armor:         { tier: 1, col: 1, needs: ["blitz"], icon: "🛡️", name: "Heavy Armor", desc: "Tanks attack and defend 35% harder.", fx: { tank: 0.35 } },
+  marines:       { tier: 1, col: 2, needs: ["artillery"], icon: "⚓", name: "Marines", desc: "Your sea landings fight at full strength, and troop transports sail at full speed.", fx: { marines: 1 } },
+  economy:       { tier: 1, col: 4, needs: ["propaganda"], icon: "🏭", name: "War Economy", desc: "+20% income.", fx: { income: 0.2 } },
+  fortify:       { tier: 1, col: 5, needs: ["drill"], icon: "🏰", name: "Fortifications", desc: "All your nations defend 20% harder.", fx: { defense: 0.2 }, players: true },
+  hospitals:     { tier: 2, col: 0, needs: ["academy"], icon: "🏥", name: "Field Hospitals", desc: "Your troops take 25% less damage in battle.", fx: { tough: 0.25 }, players: true },
+  supply:        { tier: 2, col: 1, needs: ["armor"], icon: "🚚", name: "Supply Lines", desc: "A big empire loses only half as much income and training to overstretch.", fx: { logistics: 1 }, players: true },
+  stealth:       { tier: 2, col: 2, needs: ["marines"], icon: "🛩️", name: "Stealth Bombers", desc: "Air strikes slip past interceptors, hit 50% harder and fly 50% farther.", fx: { stealth: 1, airDamage: 0.5, airRange: 0.5 } },
+  satellites:    { tier: 2, col: 3, needs: ["economy"], icon: "📡", name: "Spy Satellites", desc: "See through the fog of war everywhere, and missiles reach any target on Earth.", fx: { satellites: 1 } },
+  nuclear:       { tier: 2, col: 4, needs: ["economy"], icon: "☢️", name: "Nuclear Program", desc: "Build nuclear warheads that can strike anywhere on Earth.", fx: { nuclear: 1 } },
+  shield:        { tier: 2, col: 5, needs: ["economy"], icon: "🛰️", name: "Missile Shield", desc: "Shoots down 75% of missiles and 50% of nukes aimed at your land.", fx: { shield: 0.75, nukeShield: 0.5 } },
+  supersoldiers: { tier: 3, col: 0, needs: ["hospitals"], icon: "🦾", name: "Super Soldiers", desc: "Infantry attack and defend 50% harder.", fx: { inf: 0.5 }, players: true },
+  mobilization:  { tier: 3, col: 1, needs: ["supply"], icon: "📯", name: "Total Mobilization", desc: "Each of your nations trains up to twice as many troops.", fx: { trainCap: 1 }, players: true },
+  orbital:       { tier: 3, col: 2, needs: ["stealth", "satellites"], icon: "🔆", name: "Orbital Laser", desc: "Unlocks the Orbital Strike special op: a beam from space that can hit anywhere on Earth.", fx: { orbital: 1 }, players: true },
+  cyber:         { tier: 3, col: 3, needs: ["satellites"], icon: "💻", name: "Cyber Warfare", desc: "Spy missions steal twice as much, and sabotage destroys 60% instead of 40%.", fx: { cyber: 1 }, players: true },
+  ironcurtain:   { tier: 3, col: 5, needs: ["shield"], icon: "🧱", name: "Iron Curtain", desc: "Invaders in your land lose 3% of their troops every second.", fx: { attrition: 0.03 }, players: true },
 };
 WD.TECH_IDS = Object.keys(WD.TECHS);
 
 // Shop packs: ready-made forces delivered to your capital, at a markup over the units' price.
+// Like everything in the shop you can buy again, each one costs more every time you buy it.
+// players: human players only. coastal: delivered to a coastal nation.
 WD.PACKS = {
   battalion: { icon: "🎖️", name: "Veteran Battalion", desc: "20 infantry and 5 tanks with 2-star crews.", units: { inf: 20, tank: 5 }, vet: 2, markup: 1.25 },
   airwing:   { icon: "✈️", name: "Air Wing", desc: "6 aircraft with veteran pilots.", units: { air: 6 }, vet: 1, markup: 1.15 },
   battery:   { icon: "🚀", name: "Missile Battery", desc: "3 long-range missiles, ready to fire.", units: { mis: 3 }, vet: 0, markup: 1.1 },
+  armored:   { icon: "🛡️", name: "Armored Division", desc: "15 tanks with 1-star crews.", units: { tank: 15 }, vet: 1, markup: 1.2, players: true },
+  brigade:   { icon: "💥", name: "Artillery Brigade", desc: "12 artillery guns to shell your neighbors.", units: { art: 12 }, vet: 0, markup: 1.15, players: true },
+  fleet:     { icon: "⚓", name: "Battle Fleet", desc: "8 warships with 1-star crews, delivered to a coastal nation.", units: { ship: 8 }, vet: 1, markup: 1.15, coastal: true, players: true },
+  mercs:     { icon: "💰", name: "Mercenary Legion", desc: "50 infantry at a bargain price. No questions asked.", units: { inf: 50 }, vet: 0, markup: 0.85, players: true },
+  grandarmy: { icon: "🏆", name: "Grand Army", desc: "80 infantry, 25 tanks and 10 artillery with 2-star crews.", units: { inf: 80, tank: 25, art: 10 }, vet: 2, markup: 1.3, players: true },
+};
+
+// Special ops: one-shot moves aimed at a nation on the map (human players only).
+// cost: the first price (scaled by the game mode's economy). needs: a research that unlocks it.
+WD.OPS = {
+  sabotage:     { icon: "🧨", name: "Sabotage", cost: 500, desc: "Blow up 40% of the troops in an enemy or independent nation, anywhere in the world.", hint: "an enemy or independent nation to sabotage" },
+  paratroopers: { icon: "🪂", name: "Paratroopers", cost: 600, desc: "Drop 25 veteran infantry on an enemy or independent nation within air range of your land. They attack at once.", hint: "a nation within air range to drop paratroopers on" },
+  spy:          { icon: "🕵️", name: "Spy Mission", cost: 400, desc: "Steal 20% of an enemy empire's treasury and see all its land through the fog of war for 2 minutes.", hint: "a nation of an empire you're at war with to spy on" },
+  coup:         { icon: "🎭", name: "Coup", cost: 300, desc: "An independent nation and its army switch to your side. Bigger economies cost more.", hint: "an independent nation to take over (bigger ones cost more)" },
+  orbital:      { icon: "🔆", name: "Orbital Strike", cost: 1500, needs: "orbital", desc: "A laser from space destroys 70% of everything in any enemy nation on Earth. Nothing can stop it.", hint: "any enemy nation on Earth for the orbital strike" },
+};
+
+// Boosts: timed bonuses for your whole empire (buying one again adds time), plus the emergency
+// draft, which fills every barracks at once. Human players only.
+WD.BOOSTS = {
+  income:  { icon: "💰", name: "Income Rush", cost: 500, secs: 120, desc: "+50% income for 2 minutes.", fx: { income: 0.5 } },
+  train:   { icon: "🪖", name: "Double Training", cost: 400, secs: 180, desc: "Your nations train troops twice as fast for 3 minutes.", fx: { train: 1 } },
+  fortify: { icon: "🏰", name: "Hold the Line", cost: 500, secs: 120, desc: "All your nations defend 30% harder for 2 minutes.", fx: { defense: 0.3 } },
+  march:   { icon: "🥾", name: "Forced March", cost: 350, secs: 120, desc: "Your armies march 50% faster for 2 minutes.", fx: { speed: 0.5 } },
+  draft:   { icon: "📯", name: "Emergency Draft", cost: 600, desc: "Every one of your nations trains up to its limit right now." },
+};
+
+// The mystery crate: one random reward. chance: how often each kind turns up.
+WD.CRATE = {
+  icon: "🎁", name: "Mystery Crate", cost: 500,
+  desc: "A random reward: cash or troops, a boost, a free supply pack, or (rarely) free research.",
+  odds: [
+    { rarity: "Epic", chance: 0.07 },        // free research of a technology you can open
+    { rarity: "Rare", chance: 0.18 },        // a free supply pack
+    { rarity: "Uncommon", chance: 0.30 },    // a random boost
+    { rarity: "Common", chance: 0.45 },      // cash or reinforcements
+  ],
 };
 
 // ---------- AI leaders ----------
@@ -2401,7 +2552,7 @@ WD.Game = (() => {
   }
 
   // ---------- national superpowers and research ----------
-  function buildMods(perk, tech) {
+  function buildMods(perk, tech, boosts = []) {
     const m = { cheap: {} };
     const add = fx => {
       for (const k in fx) {
@@ -2411,8 +2562,11 @@ WD.Game = (() => {
     };
     if (WD.PERKS[perk]) add(WD.PERKS[perk].fx);
     for (const id of tech) if (WD.TECHS[id]) add(WD.TECHS[id].fx);
+    for (const id of boosts) if (WD.BOOSTS[id]?.fx) add(WD.BOOSTS[id].fx);
     return m;
   }
+  // The shop boosts an empire has running right now.
+  const activeBoosts = e => G.fx.filter(f => f.kind === "boost" && f.empire === e).map(f => f.id);
   const mods = e => (e >= 0 && cache.mods[e]) || NO_MODS;
   // Whoever holds a country defends it with their bonuses; independent nations use their own perk.
   const landMods = c => (G.owner[c] >= 0 ? mods(G.owner[c]) : cache.landMods[c]);
@@ -2430,12 +2584,12 @@ WD.Game = (() => {
   // Fighting strength, including veterans, perks and research.
   function attackOf(units, owner, vet) {
     const m = mods(owner);
-    const a = U.attack(units) + units.tank * UNITS.tank.att * (m.tank || 0) + units.ship * UNITS.ship.att * (m.ship || 0);
+    const a = U.attack(units) + units.tank * UNITS.tank.att * (m.tank || 0) + units.ship * UNITS.ship.att * (m.ship || 0) + units.inf * UNITS.inf.att * (m.inf || 0);
     return a * (1 + (m.attack || 0)) * vetMult(vet);
   }
   function defenseOf(c) {
     const u = G.units[c], o = G.owner[c], m = landMods(c);
-    const d = U.defense(u) + u.tank * UNITS.tank.def * (m.tank || 0) + u.ship * UNITS.ship.def * (m.ship || 0);
+    const d = U.defense(u) + u.tank * UNITS.tank.def * (m.tank || 0) + u.ship * UNITS.ship.def * (m.ship || 0) + u.inf * UNITS.inf.def * (m.inf || 0);
     let k = (1 + (m.defense || 0)) * vetMult(G.vet[c]);
     if (o >= 0 && G.empires[o].capital === c) k *= 1 + R.capitalDefense;
     return d * k;
@@ -2595,9 +2749,11 @@ WD.Game = (() => {
 
   // ---------- autopilot (players) ----------
   // Its decisions live in autopilot.js; the settings and bookkeeping are part of the saved game.
+  // Smart troops (front, expand, attack, retreat) were added later: saves from before them get these.
+  const SMART_DEFAULTS = { front: true, expand: true, attack: false, retreat: true };
   const autopilotDefaults = () => ({
-    auto: { budget: R.autoBudget, reinforce: true, retake: true, caretaker: true },
-    autoStats: { spent: 0, recruited: 0, moved: 0, retaken: 0 },
+    auto: { budget: R.autoBudget, reinforce: true, retake: true, caretaker: true, ...SMART_DEFAULTS },
+    autoStats: { spent: 0, recruited: 0, moved: 0, retaken: 0, taken: 0 },
     autoFund: 0, retake: [], touched: {}, lastOrder: 0,
   });
 
@@ -2609,7 +2765,17 @@ WD.Game = (() => {
     e.auto = {
       budget: Number.isFinite(budget) ? Math.min(0.5, Math.max(0, budget)) : e.auto.budget,
       reinforce: !!cfg.reinforce, retake: !!cfg.retake, caretaker: !!cfg.caretaker,
+      front: !!cfg.front, expand: !!cfg.expand, attack: !!cfg.attack, retreat: !!cfg.retreat,
     };
+    return ok();
+  }
+
+  // Pull an attacking force out of a battle: it marches back to the nearest nation of its own.
+  function withdraw(owner, c) {
+    const list = G.sieges[c], i = list.findIndex(s => s.owner === owner);
+    if (i < 0) return fail("You have no troops fighting there.");
+    const s = list.splice(i, 1)[0];
+    retreatUnits(owner, s.units, c, s.vet);
     return ok();
   }
 
@@ -2658,7 +2824,7 @@ WD.Game = (() => {
 
   function refreshCache() {
     const n = G.empires.length;
-    cache.mods = G.empires.map(e => buildMods(e.perk, e.tech));
+    cache.mods = G.empires.map(e => buildMods(e.perk, e.tech, activeBoosts(e.id)));
     cache.rad = new Set();
     cache.blight = new Set();
     for (const f of G.fx) {
@@ -2694,7 +2860,8 @@ WD.Game = (() => {
   const worldShare = e => (cache.value[e] || 0) / W.totalValue * 100;
 
   // Big empires are harder to run: each extra point of value pays a little less.
-  const efficiency = e => 1 / (1 + Math.max(0, cache.value[e] - R.overextendFrom) / R.overextendScale);
+  // Supply Lines halve the overstretch penalty.
+  const efficiency = e => 1 / (1 + Math.max(0, cache.value[e] - R.overextendFrom) / (R.overextendScale * (1 + (mods(e).logistics || 0))));
 
   // Opening boost so the war gets going fast: double income at first, fading back to normal.
   function mobilization() {
@@ -2889,13 +3056,14 @@ WD.Game = (() => {
       });
       const A = powers.reduce((x, y) => x + y, 0);
       const before = U.count(def, WD.COMBAT_TYPES);
-      U.damage(def, A * R.combatRate * dt);
+      // Field Hospitals: a side's troops take less damage.
+      U.damage(def, A * R.combatRate * dt * (1 - (lm.tough || 0)));
       const killed = before - U.count(def, WD.COMBAT_TYPES);
       list.forEach((s, i) => {
         const share = A > 0 ? powers[i] / A : 1 / list.length;
         credit(s.owner, killed * share);
         const n0 = U.count(s.units, WD.ARMY_TYPES);
-        U.damage(s.units, D * R.combatRate * dt * share, WD.ARMY_TYPES);
+        U.damage(s.units, D * R.combatRate * dt * share * (1 - (mods(s.owner).tough || 0)), WD.ARMY_TYPES);
         // Winter, jungle and other home advantages wear invaders down.
         if (lm.attrition) U.scale(s.units, 1 - lm.attrition * dt, WD.ARMY_TYPES);
         credit(holder, n0 - U.count(s.units, WD.ARMY_TYPES));
@@ -3050,13 +3218,14 @@ WD.Game = (() => {
   // makes room for more. Training pauses during a battle there and stops while it's radioactive,
   // and like income it starts slow in a newly conquered nation. Overstretched empires train far
   // less (efficiency squared), so a runaway empire can't drown the map in free troops.
-  const recruitCap = c => (R.recruitBase + R.recruitPerValue * W.countries[c].value) * mode().neutral;
+  // Research and boosts raise the limit (Total Mobilization) and the pace (Drill Sergeants, Double Training).
+  const recruitCap = c => (R.recruitBase + R.recruitPerValue * W.countries[c].value) * mode().neutral * (1 + (mods(G.owner[c]).trainCap || 0));
   // Troops a nation trains per second while it's below its limit.
   function recruitRate(c) {
     const o = G.owner[c];
     if (o < 0 || cache.rad.has(c)) return 0;
     const k = empire(o).human ? 1 : diff().income;
-    return recruitCap(c) / R.recruitTime * integration(c) * efficiency(o) ** 2 * mode().income * k;
+    return recruitCap(c) / R.recruitTime * integration(c) * efficiency(o) ** 2 * mode().income * k * (1 + (mods(o).train || 0));
   }
   function recruits(dt) {
     for (let c = 0; c < G.owner.length; c++) {
@@ -3082,42 +3251,69 @@ WD.Game = (() => {
     return ok();
   }
 
-  // Shop packs: forces delivered straight to the capital (or the first nation left).
+  // ---------- the shop ----------
+  // Anything you can buy again (packs, special ops, boosts, crates) costs more each time, for the
+  // rest of the war: every purchase adds priceRise of the first price.
+  const hasOwn = (table, id) => Object.prototype.hasOwnProperty.call(table, id);
+  const timesBought = (e, key) => empire(e).bought?.[key] || 0;
+  const rising = (e, key, base) => Math.round(base * (1 + R.priceRise * timesBought(e, key)) / 10) * 10;
+  function noteBought(e, key) {
+    const x = empire(e);
+    x.bought ||= {};
+    x.bought[key] = (x.bought[key] || 0) + 1;
+  }
+  // A coup costs more in a bigger economy, so the price depends on the target (c) when there is one.
+  const opCost = (e, id, c = -1) => rising(e, "op:" + id, (WD.OPS[id].cost + (id === "coup" && c >= 0 ? R.coupPerValue * W.countries[c].value : 0)) * mode().income);
+  const boostCost = (e, id) => rising(e, "boost:" + id, WD.BOOSTS[id].cost * mode().income);
+  const crateCost = e => rising(e, "crate", WD.CRATE.cost * mode().income);
+  // Seconds left on one of an empire's boosts (0 when it isn't running).
+  const boostLeft = (e, id) => Math.max(0, (G.fx.find(f => f.kind === "boost" && f.empire === e && f.id === id)?.until || 0) - G.time);
+
+  // Shop packs: forces delivered straight to the capital, or the first nation left (a coastal one for ships).
   function packCost(owner, id) {
     const p = WD.PACKS[id];
     let full = 0;
     for (const t in p.units) full += unitCost(owner, t) * p.units[t];
-    return Math.round(full * p.markup / 10) * 10;
+    return rising(owner, "pack:" + id, full * p.markup);
+  }
+  function depot(owner, coastal) {
+    const e = empire(owner), own = ownedBy(owner).filter(c => !cache.rad.has(c) && (!coastal || country(c).coastal));
+    return own.includes(e.capital) ? e.capital : own[0];
   }
 
   function buyPack(owner, id) {
-    const e = empire(owner), p = Object.prototype.hasOwnProperty.call(WD.PACKS, id) ? WD.PACKS[id] : null;
-    if (!p) return fail("That isn't for sale.");
-    const own = ownedBy(owner);
-    const at = own.includes(e.capital) ? e.capital : own[0];
-    if (at === undefined) return fail("You have no territory left to receive it.");
-    if (cache.rad.has(at)) return fail(`${nameOf(at)} is radioactive. Deliveries can't land there.`);
+    const e = empire(owner), p = hasOwn(WD.PACKS, id) ? WD.PACKS[id] : null;
+    if (!p || (p.players && !e.human)) return fail("That isn't for sale.");
+    const at = depot(owner, p.coastal);
+    if (at === undefined) return fail(p.coastal ? "A fleet needs one of your nations on the coast." : "You have no territory left that can receive it.");
     const cost = packCost(owner, id);
     if (e.money < cost) return fail(`Not enough money: the ${p.name} costs $${cost.toLocaleString()}.`);
     e.money -= cost;
+    noteBought(owner, "pack:" + id);
     addTroops(at, p.units, p.vet);
     return ok({ at });
   }
 
+  // Research is a tree: a technology opens once everything in its `needs` is researched.
   function techLocked(e, id) {
-    const need = WD.TECH_TIERS[WD.TECHS[id].tier].needs - empire(e).tech.length;
-    return need > 0 ? `Research ${need} more ${need === 1 ? "technology" : "technologies"} to unlock ${WD.TECH_TIERS[WD.TECHS[id].tier].name}.` : "";
+    const missing = WD.TECHS[id].needs.filter(n => !empire(e).tech.includes(n));
+    return missing.length ? `Research ${missing.map(n => WD.TECHS[n].name).join(" and ")} first.` : "";
   }
 
   function research(owner, id) {
-    const e = empire(owner), t = WD.TECHS[id];
-    if (!t) return fail("Unknown technology.");
+    const e = empire(owner), t = hasOwn(WD.TECHS, id) ? WD.TECHS[id] : null;
+    if (!t || (t.players && !e.human)) return fail("Unknown technology.");
     if (e.tech.includes(id)) return fail(`You already have ${t.name}.`);
     const lock = techLocked(owner, id);
     if (lock) return fail(lock);
     const cost = techCost(owner, id);
     if (e.money < cost) return fail(`Not enough money: ${t.name} costs $${cost.toLocaleString()}.`);
     e.money -= cost;
+    grantTech(owner, id);
+    return ok();
+  }
+  function grantTech(owner, id) {
+    const e = empire(owner);
     e.tech.push(id);
     emit("research", { for: owner, id });
     if (id === "nuclear") {
@@ -3126,7 +3322,139 @@ WD.Game = (() => {
     }
     if (e.tech.length === WD.TECH_IDS.length) award(owner, "scientist");
     refreshCache();
-    return ok();
+  }
+
+  // Special ops: one-shot moves aimed at a nation, for human players. The price is paid when it works.
+  function useOp(owner, id, c) {
+    const e = empire(owner), op = hasOwn(WD.OPS, id) ? WD.OPS[id] : null;
+    if (!op || !e.human) return fail("That isn't for sale.");
+    if (op.needs && !has(owner, op.needs)) return fail(`${op.name} needs ${WD.TECHS[op.needs].name} from the research tree.`);
+    const name = nameOf(c), o = G.owner[c];
+    if (o === owner) return fail(`${name} is already yours.`);
+    if (id === "coup") {
+      if (o >= 0) return fail("A coup only works in an independent nation.");
+      if (G.sieges[c].length) return fail(`A battle is raging in ${name}. No coup can take hold there now.`);
+    } else if (!isHostile(owner, c)) return fail(`You have a treaty with the owner of ${name}.`);
+    if (id === "spy" && o < 0) return fail("Pick a nation that belongs to an enemy empire.");
+    if (id === "paratroopers" && !ownedBy(owner).some(x => dist(x, c) <= airRange(owner))) {
+      return fail(`${name} is out of reach. Paratroopers fly up to ${Math.round(airRange(owner)).toLocaleString()} km from your land.`);
+    }
+    const cost = opCost(owner, id, c);
+    if (e.money < cost) return fail(`Not enough money: ${id === "coup" ? `a coup in ${name}` : op.name} costs $${cost.toLocaleString()}.`);
+    e.money -= cost;
+    noteBought(owner, "op:" + id);
+    touch(owner, c);
+    if (id === "sabotage" || id === "orbital") {
+      const k = id === "orbital" ? R.orbitalKill : has(owner, "cyber") ? R.cyberSabotage : R.sabotageKill;
+      const before = U.count(G.units[c], WD.COMBAT_TYPES);
+      U.scale(G.units[c], 1 - k, id === "orbital" ? WD.ALL_TYPES : GROUND);
+      const killed = before - U.count(G.units[c], WD.COMBAT_TYPES);
+      credit(owner, killed);
+      emit("explosion", { country: c, big: id === "orbital" });
+      emit("eventFx", { country: c, icon: op.icon, text: id === "orbital" ? "ORBITAL STRIKE" : "SABOTAGE", cls: "bad" });
+      if (o >= 0) {
+        addOpinion(o, owner, id === "orbital" ? -25 : -12);
+        tell(o, `${op.icon} ${id === "orbital" ? `An orbital laser from the ${e.name} scorched` : "Saboteurs struck"} ${name}: ${Math.round(killed)} troops lost.`, "bad", c);
+      }
+      if (id === "orbital") news(`🔆 A laser from space, fired by the ${e.name}, scorched ${name}.`, c, "bad");
+      return ok({ text: `${op.icon} ${id === "orbital" ? "The orbital strike" : "Your saboteurs"} destroyed ${Math.round(killed)} troops in ${name}.` });
+    }
+    if (id === "paratroopers") {
+      joinSiege(c, owner, { inf: R.paraTroops }, false, 1);
+      emit("eventFx", { country: c, icon: op.icon, text: "AIRBORNE", cls: "good" });
+      return ok({ text: `${op.icon} ${R.paraTroops} paratroopers landed in ${name} and are attacking.` });
+    }
+    if (id === "spy") {
+      const foe = empire(o), cyber = has(owner, "cyber") ? 2 : 1;
+      const take = Math.round(Math.min(R.spyMax * mode().income * cyber, foe.money * R.spySteal * cyber));
+      foe.money -= take;
+      e.money += take;
+      G.fx.push({ kind: "intel", for: owner, empire: o, until: G.time + R.spySecs });
+      addOpinion(o, owner, -10);
+      tell(o, `🕵️ Enemy spies stole $${take.toLocaleString()} from your treasury.`, "bad");
+      return ok({ text: `${op.icon} Your spies stole $${take.toLocaleString()} from the ${foe.name}, and you can see all its land for ${R.spySecs / 60} minutes.` });
+    }
+    // A coup: the nation and its army are yours.
+    setOwner(c, owner, "coup");
+    emit("eventFx", { country: c, icon: op.icon, text: "COUP", cls: "good" });
+    refreshCache();
+    return ok({ text: `${op.icon} A coup handed you ${name} and its army.` });
+  }
+
+  // Boosts: a timed bonus for the whole empire (buying it again adds time), or the emergency draft.
+  function buyBoost(owner, id) {
+    const e = empire(owner), b = hasOwn(WD.BOOSTS, id) ? WD.BOOSTS[id] : null;
+    if (!b || !e.human) return fail("That isn't for sale.");
+    const cost = boostCost(owner, id);
+    if (e.money < cost) return fail(`Not enough money: ${b.name} costs $${cost.toLocaleString()}.`);
+    if (id === "draft" && draftAll(owner, true) < 1) return fail("Your barracks are already full. Send some troops out first.");
+    e.money -= cost;
+    noteBought(owner, "boost:" + id);
+    if (id === "draft") return ok({ text: `${b.icon} Emergency draft: ${Math.round(draftAll(owner))} troops joined up across your nations.` });
+    startBoost(owner, id);
+    return ok({ text: `${b.icon} ${b.name}: ${b.desc}` });
+  }
+  function startBoost(owner, id) {
+    const f = G.fx.find(x => x.kind === "boost" && x.empire === owner && x.id === id);
+    if (f) f.until += WD.BOOSTS[id].secs;
+    else G.fx.push({ kind: "boost", empire: owner, id, until: G.time + WD.BOOSTS[id].secs });
+    refreshCache();
+  }
+  // Every nation not under attack trains up to its limit at once. Returns the troops raised
+  // (or, with dryRun, the troops it would raise).
+  function draftAll(owner, dryRun = false) {
+    let total = 0;
+    for (const c of ownedBy(owner)) {
+      if (cache.rad.has(c) || G.sieges[c].length) continue;
+      const n = recruitCap(c) - U.count(G.units[c], WD.ARMY_TYPES);
+      if (n <= 0) continue;
+      total += n;
+      if (dryRun) continue;
+      const tanks = W.countries[c].value >= R.recruitTankValue ? n * R.recruitTanks : 0;
+      addTroops(c, { inf: n - tanks, tank: tanks });
+    }
+    return total;
+  }
+
+  // The mystery crate: one random reward (see WD.CRATE for the odds).
+  function openCrate(owner) {
+    const e = empire(owner);
+    if (!e.human) return fail("That isn't for sale.");
+    const cost = crateCost(owner);
+    if (e.money < cost) return fail(`Not enough money: a crate costs $${cost.toLocaleString()}.`);
+    e.money -= cost;
+    noteBought(owner, "crate");
+    let roll = Math.random(), rarity = "Common";
+    for (const o of WD.CRATE.odds) { if (roll < o.chance) { rarity = o.rarity; break; } roll -= o.chance; }
+    const gift = (id, why) => {
+      const p = WD.PACKS[id], at = depot(owner, p.coastal);
+      if (at === undefined) { e.money += cost * 2; return `$${(cost * 2).toLocaleString()} (${why} had nowhere to land)`; }
+      addTroops(at, p.units, p.vet);
+      return `a free ${p.name}, delivered to ${nameOf(at)}`;
+    };
+    let text;
+    if (rarity === "Epic") {
+      const open = WD.TECH_IDS.filter(id => !e.tech.includes(id) && !techLocked(owner, id));
+      if (open.length) {
+        const id = pick(open);
+        grantTech(owner, id);
+        text = `free research: ${WD.TECHS[id].icon} ${WD.TECHS[id].name}`;
+      } else text = gift("grandarmy", "a Grand Army");
+    } else if (rarity === "Rare") text = gift(pick(["battalion", "airwing", "armored", "brigade"]), "the pack");
+    else if (rarity === "Uncommon") {
+      const id = pick(["income", "train", "fortify", "march"]), b = WD.BOOSTS[id];
+      startBoost(owner, id);
+      text = `${b.icon} ${b.name} (${b.desc.replace(/\.$/, "")})`;
+    } else if (Math.random() < 0.5) {
+      const cash = Math.round(cost * (1.1 + Math.random() * 0.5) / 10) * 10;
+      e.money += cash;
+      text = `$${cash.toLocaleString()} in cash`;
+    } else {
+      const at = depot(owner, false);
+      if (at === undefined) { e.money += cost; text = `a refund of $${cost.toLocaleString()}`; }
+      else { addTroops(at, { inf: 15, tank: 5 }, 1); text = `15 infantry and 5 tanks, delivered to ${nameOf(at)}`; }
+    }
+    return ok({ text: `${WD.CRATE.icon} ${rarity}! ${text[0].toUpperCase()}${text.slice(1)}.`, rarity });
   }
 
   // ---------- aircraft, missiles, nukes, artillery ----------
@@ -3661,8 +3989,13 @@ WD.Game = (() => {
     const data = migrate(typeof json === "string" ? JSON.parse(json) : json);
     if (!data || data.version !== SAVE_VERSION || data.owner?.length !== world.countries.length) throw new Error("This save is from a different version of the game.");
     G = data;
-    // A loaded war starts with the player at the controls, not in caretaker mode.
-    for (const e of G.empires) if (e.human) e.lastOrder = G.time;
+    // A loaded war starts with the player at the controls, not in caretaker mode. Wars saved
+    // before smart troops get their default settings.
+    for (const e of G.empires) {
+      if (!e.human) continue;
+      e.lastOrder = G.time;
+      if (e.auto) e.auto = { ...SMART_DEFAULTS, ...e.auto };
+    }
     computeBase();
     refreshCache();
     emit("reset");
@@ -3711,6 +4044,7 @@ WD.Game = (() => {
     setAway, applySnapshot, extrapolate, announce, tell, news, banner, mark,
     sendArmy, buy, launchAir, launchMissile, toggleBombard, preview, armyEta,
     research, buildNuke, launchNuke, answerOffer, offer, buyPack, packCost, setAutopilot, asAutopilot, noteOrder, militiaCap, recruitCap, recruitRate,
+    useOp, buyBoost, openCrate, opCost, boostCost, crateCost, boostLeft, timesBought, withdraw,
     propose, answerProposal, declareWar, setRelation,
     relation, relSince, isHostile, isFriendly, opinion, addOpinion, locked,
     power, shareBorder, worldShare, incomeOf, efficiency, integration, mobilization, findPath, findPathTo, edgeOf, dist,
@@ -3885,10 +4219,20 @@ WD.AI = (() => {
   }
 
   // ---------- research and warheads: save up for a goal, unless the homeland is in danger ----------
+  // The AI keeps to the original technologies (players-only ones are off limits) and walks the
+  // research tree toward the ones its leader likes: if a favorite isn't open yet, it researches
+  // what that favorite needs first.
   function nextTech(e) {
     const P = persona(e);
-    const open = WD.TECH_IDS.filter(id => !e.tech.includes(id) && !Game.techLocked(e.id, id) && (id !== "nuclear" || P.nuke >= 0.5));
-    return P.research.find(id => open.includes(id)) || pick(open) || null;
+    const wanted = id => !WD.TECHS[id].players && !e.tech.includes(id) && (id !== "nuclear" || P.nuke >= 0.5);
+    const toward = id => {
+      if (!wanted(id)) return null;
+      if (!Game.techLocked(e.id, id)) return id;
+      for (const n of WD.TECHS[id].needs) { const step = toward(n); if (step) return step; }
+      return null;
+    };
+    for (const id of P.research) { const step = toward(id); if (step) return step; }
+    return pick(WD.TECH_IDS.filter(id => wanted(id) && !Game.techLocked(e.id, id))) || null;
   }
 
   function invest(e, diff, frontier, info) {
@@ -4589,8 +4933,10 @@ WD.Director = (() => {
   <script>
 // The autopilot looks after players' empires between their own orders: it spends a share of
 // income on defenders wherever an attack is coming, moves idle troops from the safe interior to
-// threatened borders, and strikes back to win lost nations back. It only runs where the war is
-// simulated (solo games and the multiplayer host), and leaves players who are away to the AI.
+// threatened borders, and strikes back to win lost nations back. Its smart troops also gather
+// idle armies at the front, take weak neighbors (and, if the player wants, attack enemies) when
+// they can win easily, and pull out of battles that are clearly lost. It only runs where the
+// war is simulated (solo games and the multiplayer host), and leaves players who are away to the AI.
 window.WD = window.WD || {};
 
 WD.Autopilot = (() => {
@@ -4633,6 +4979,13 @@ WD.Autopilot = (() => {
     if (e.auto.budget > 0 || caretaking(e)) recruit(e, threats);
     if (e.auto.reinforce) reinforce(e, owned, threats);
     retake(e);
+    // Smart troops. Not in Boot Camp, where the player is learning to give these orders.
+    if (!Game.state.settings.tutorial) {
+      if (e.auto.retreat) pullOut(e);
+      if (e.auto.expand || e.auto.attack) advance(e, owned, threats);
+      if (e.auto.front) gather(e, owned, threats);
+      tally(e);
+    }
     report(e);
   }
 
@@ -4751,6 +5104,128 @@ WD.Autopilot = (() => {
     e.retake = keep;
   }
 
+  // ---------- smart troops ----------
+  // Nations the player gave orders in lately are left alone.
+  const recent = (e, c) => Game.state.time - (e.touched?.[c] ?? -1e9) < R.touchSecs;
+  // A share of a garrison's marching troops, as an army bundle.
+  const share = (u, k) => ({ inf: u.inf * k, tank: u.tank * k, art: u.art * k, ship: 0 });
+
+  // The strongest army of an empire at war with e next to nation c.
+  function enemyNear(e, c) {
+    const G = Game.state;
+    let most = 0;
+    for (const n of Game.world.countries[c].edges.keys()) {
+      const o = G.owner[n];
+      if (o >= 0 && o !== e.id && Game.relation(e.id, o) === "war") most = Math.max(most, Game.attackOf(G.units[n], o, G.vet[n]));
+    }
+    return most;
+  }
+
+  // Gather at the front: idle troops in the inland heartland march to the nearest border with an
+  // enemy empire, where they're needed. (Not to quiet borders with independent nations: feeding
+  // those drains the heartland.) Only nations surrounded by the player's own and allied land send
+  // troops: one next to an empire at peace isn't safe, since peace can end. The capital keeps its
+  // garrison, and troops only march to a border nation they can hold against the strongest enemy
+  // army next door: in a losing war they hold the heartland instead.
+  function gather(e, owned, threats) {
+    const G = Game.state, W = Game.world;
+    const threatened = new Set(threats.map(t => t.c)), need = new Map(threats.map(t => [t.c, t.need]));
+    const front = new Set(owned.filter(c => [...W.countries[c].edges.keys()].some(n => G.owner[n] >= 0 && Game.isHostile(e.id, n))));
+    if (!front.size) return;
+    const inland = c => [...W.countries[c].edges.keys()].every(n => Game.isFriendly(e.id, n));
+    // Overland only: shipping troops across the sea is slow and leaves the mainland thin.
+    const overland = path => path.every((u, i) => i === 0 || !W.countries[path[i - 1]].edges.get(u).sea);
+    let moves = 0;
+    for (const c of owned) {
+      if (moves >= 3) break;
+      if (c === e.capital || !inland(c) || threatened.has(c) || recent(e, c) || G.sieges[c].length || U.count(G.units[c], MOVERS) < 6) continue;
+      const bring = U.defense(share(G.units[c], 0.85));
+      const holdable = u => enemyNear(e, u) <= Game.defenseOf(u) + bring && (need.get(u) || 0) <= bring;
+      const path = Game.findPathTo(c, e.id, false, u => front.has(u) && holdable(u));
+      if (!path || !overland(path)) continue;
+      const dest = path[path.length - 1];
+      const plan = Game.preview(e.id, c, dest, 0.85, MOVERS);
+      if (!plan || !plan.path || !overland(plan.path) || plan.eta > 90) continue;
+      const res = Game.sendArmy(e.id, c, dest, 0.85, MOVERS);
+      if (!res.ok) continue;
+      moves++;
+      const n = U.count(res.army.units, MOVERS);
+      e.autoStats.moved += n;
+      note(e, "front", dest, n);
+    }
+  }
+
+  // Take weak neighbors: a border army attacks the nation next door that's worth the most for its
+  // defenses, but only with two and a half times the strength it needs, overland, in plain sight
+  // (not through the fog), and one attack at a time. Independent nations with "expand", and only
+  // from nations with no enemy empire next door, so the real front stays manned. Empires at war
+  // with "attack", once the opening ceasefire is over. It sends just enough for a clear win, keeps
+  // a quarter at home, and never leaves a nation too weak for the enemy armies next door.
+  function advance(e, owned, threats) {
+    const G = Game.state, W = Game.world;
+    if (G.time < (e.autoNextAttack || 0)) return;
+    const graceOver = G.time >= WD.MODES[G.settings.mode].grace;
+    const seen = Game.vision(e.id);
+    const threatened = new Set(threats.map(t => t.c));
+    const busy = new Set(G.armies.filter(a => a.owner === e.id).map(a => a.path[a.path.length - 1]));
+    // Nations someone else is attacking or marching on are left to them: joining in could start a
+    // fight with the empire that takes it.
+    const contested = new Set(G.armies.filter(a => a.owner !== e.id).map(a => a.path[a.path.length - 1]));
+    for (const c of owned) {
+      if (threatened.has(c) || recent(e, c) || G.sieges[c].length || U.count(G.units[c], MOVERS) < 5) continue;
+      const enemy = enemyNear(e, c);
+      const most = Game.attackOf(share(G.units[c], 0.75), e.id, G.vet[c]);
+      let best = -1, bestScore = 0;
+      for (const [n, edge] of W.countries[c].edges) {
+        if (edge.sea || !seen[n] || busy.has(n) || contested.has(n) || G.sieges[n].length || !Game.isHostile(e.id, n)) continue;
+        if (G.owner[n] < 0 ? !e.auto.expand || enemy > 0 : !e.auto.attack || !graceOver) continue;
+        // ...nor a nation an enemy army next to it could take straight back.
+        const D = Game.defenseOf(n);
+        if (most < D * 2.5 + 2 || enemyNear(e, n) > most) continue;
+        const score = (W.countries[n].value + 0.5) / (D + 5);
+        if (score > bestScore) { bestScore = score; best = n; }
+      }
+      if (best < 0) continue;
+      const frac = Math.min(0.75, Math.max(0.3, 0.75 * (Game.defenseOf(best) * 2.6 + 2) / most));
+      // What stays behind (troops that don't march, plus the rest) must still match the strongest
+      // enemy force next door.
+      const u = G.units[c], all = U.defense(u);
+      const left = Game.defenseOf(c) * (all > 0 ? 1 - U.defense(share(u, frac)) / all : 0);
+      if (left < enemy) continue;
+      const res = Game.sendArmy(e.id, c, best, frac, MOVERS);
+      if (!res.ok) continue;
+      e.autoNextAttack = G.time + 8;
+      e.autoStats.moved += U.count(res.army.units, MOVERS);
+      (e.autoHits ||= []).push({ c: best, until: G.time + 120 });
+      note(e, "attack", best, 1);
+      return;
+    }
+  }
+
+  // Count the nations those attacks won.
+  function tally(e) {
+    const G = Game.state;
+    if (!e.autoHits?.length) return;
+    e.autoHits = e.autoHits.filter(h => {
+      if (G.owner[h.c] === e.id) { e.autoStats.taken = (e.autoStats.taken || 0) + 1; note(e, "took", h.c, 1); return false; }
+      return G.time < h.until;
+    });
+  }
+
+  // Pull out of lost battles: an attack facing more than two and a half times its strength comes
+  // home before it's wiped out. Attacks the player ordered in the last 45 seconds are left alone.
+  function pullOut(e) {
+    const G = Game.state;
+    G.sieges.forEach((list, c) => {
+      const s = list.find(x => x.owner === e.id);
+      if (!s || recent(e, c)) return;
+      const A = list.reduce((sum, x) => sum + Game.attackOf(x.units, x.owner, x.vet), 0);
+      if (Game.defenseOf(c) < A * 2.5 + 3) return;
+      const n = U.count(s.units, WD.ARMY_TYPES);
+      if (Game.withdraw(e.id, c).ok) note(e, "retreat", c, n);
+    });
+  }
+
   // A short summary in the player's log now and then, instead of a line for every order.
   function note(e, kind, c, n) {
     const notes = (e.autoNote ||= {});
@@ -4765,14 +5240,18 @@ WD.Autopilot = (() => {
     const r = e.autoNote, parts = [];
     const where = list => list.slice(0, 2).map(c => W.countries[c].name).join(" and ") + (list.length > 2 ? ` and ${list.length - 2} more` : "");
     if (r.retook) parts.push(`won back ${where(r.retook.places)}`);
+    if (r.took) parts.push(`took ${where(r.took.places)}`);
     if (r.striking) parts.push(`struck back at ${where(r.striking.places)}`);
+    if (r.attack) parts.push(`attacked ${where(r.attack.places)}`);
+    if (r.retreat) parts.push(`pulled ${Math.round(r.retreat.n)} troops out of a lost battle in ${where(r.retreat.places)}`);
     if (r.caretaker) parts.push(`spent savings on ${Math.round(r.caretaker.n)} defenders in ${where(r.caretaker.places)} while you were away`);
     if (r.recruited) parts.push(`raised ${Math.round(r.recruited.n)} defenders in ${where(r.recruited.places)}`);
     if (r.moved) parts.push(`sent ${Math.round(r.moved.n)} troops to ${where(r.moved.places)}`);
+    if (r.front) parts.push(`moved ${Math.round(r.front.n)} troops up to the front at ${where(r.front.places)}`);
     e.autoNote = null;
     e.autoReportAt = G.time + REPORT_EVERY;
-    const first = (r.retook || r.striking || r.caretaker || r.recruited || r.moved).places[0];
-    Game.tell(e.id, `🛡 Autopilot ${parts.join(", ")}.`, r.retook ? "good" : "info", first);
+    const first = (r.retook || r.took || r.striking || r.attack || r.retreat || r.caretaker || r.recruited || r.moved || r.front).places[0];
+    Game.tell(e.id, `🛡 Autopilot ${parts.join(", ")}.`, r.retook || r.took ? "good" : "info", first);
   }
 
   return { tick, lost };
@@ -4790,7 +5269,7 @@ WD.Net = (() => {
   const PREFIX = "world-dominion-";
   const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O or 1/I mix-ups
   const SNAPSHOT_MS = 250;
-  const COMMANDS = ["sendArmy", "buy", "launchAir", "launchMissile", "toggleBombard", "propose", "answerProposal", "declareWar", "research", "buildNuke", "launchNuke", "answerOffer", "buyPack", "setAutopilot"];
+  const COMMANDS = ["sendArmy", "buy", "launchAir", "launchMissile", "toggleBombard", "propose", "answerProposal", "declareWar", "research", "buildNuke", "launchNuke", "answerOffer", "buyPack", "setAutopilot", "useOp", "buyBoost", "openCrate"];
   // Game events the host passes on: to the player they're meant for, or to everyone.
   const TARGETED = ["log", "medal", "bounty", "research", "banner"];
   const BROADCAST = ["news", "explosion", "nuke", "nukeLaunch", "intercept", "eventFx"];
@@ -5067,17 +5546,20 @@ WD.Net = (() => {
       case "buildNuke": return a.length === 0;
       case "launchNuke": return isCountry(a[0]);
       case "buyPack": return typeof a[0] === "string" && Object.prototype.hasOwnProperty.call(WD.PACKS, a[0]);
+      case "useOp": return typeof a[0] === "string" && Object.prototype.hasOwnProperty.call(WD.OPS, a[0]) && isCountry(a[1]);
+      case "buyBoost": return typeof a[0] === "string" && Object.prototype.hasOwnProperty.call(WD.BOOSTS, a[0]);
+      case "openCrate": return a.length === 0;
       case "setAutopilot": {
         const cfg = a[0];
         return !!cfg && typeof cfg === "object" && typeof cfg.budget === "number" && cfg.budget >= 0 && cfg.budget <= 0.5 &&
-          typeof cfg.reinforce === "boolean" && typeof cfg.retake === "boolean" && typeof cfg.caretaker === "boolean";
+          ["reinforce", "retake", "caretaker", "front", "expand", "attack", "retreat"].every(k => typeof cfg[k] === "boolean");
       }
     }
     return false;
   }
 
   function runCommand(c, msg) {
-    const reply = r => send(c.conn, { t: "res", id: msg.id, r: { ok: !!r.ok, reason: r.reason, pending: r.pending, stopped: r.stopped, rebase: r.rebase, quote: r.quote, delivered: r.delivered, at: r.at } });
+    const reply = r => send(c.conn, { t: "res", id: msg.id, r: { ok: !!r.ok, reason: r.reason, pending: r.pending, stopped: r.stopped, rebase: r.rebase, quote: r.quote, delivered: r.delivered, at: r.at, text: r.text, rarity: r.rarity } });
     const seat = c.player.seat;
     if (!N.inGame || seat == null || !COMMANDS.includes(msg.op) || !Array.isArray(msg.args) || !validOrder(msg.op, msg.args)) {
       reply({ ok: false, reason: "The host couldn't accept that order." });
@@ -6294,7 +6776,7 @@ WD.Bootcamp = (() => {
   const remember = v => { try { localStorage.setItem(KEY, v); } catch { /* storage blocked */ } };
   const val = (x, c) => (typeof x === "function" ? x(c) : x);
 
-  // hooks: ctx() -> { G, me, selected, hover, frac, modal, action, touch, target, radar }, beacon(c), show(c, zoom),
+  // hooks: ctx() -> { G, me, selected, hover, frac, modal, action, touch, target, radar, shopTab, techSel }, beacon(c), show(c, zoom),
   // fold(on) (upright phones: shrink the panel sheet), contract(c), sound(name), complete(first) -> experience paid,
   // finish(how), invite() -> room code or ""
   function init(world, h) {
@@ -6363,10 +6845,14 @@ WD.Bootcamp = (() => {
         target: c => (c.touch ? (c.target === ES ? '#targetCard [data-tc="air"]' : null)
           : c.selected === FR && c.action !== "air" ? '#panel [data-act="mode"][data-v="air"]' : null),
         done: () => !!st.air },
-      { title: "The Shop", text: c => (st.tech ? "Researched! Close the Shop to carry on."
-          : c.modal === "research" ? `Research upgrades your whole empire for the rest of the war. ${Click(c)} <b>Buy</b> under <b>Blitzkrieg</b>.`
-          : `Here's $600 of war funds. Open the <b>Shop</b> (${c.touch ? "the gold 🛒 button" : "<kbd>U</kbd>, or the gold button"} at the top) and research <b>Blitzkrieg</b>.`),
-        target: c => (st.tech ? "#modalCard [data-m=close]" : c.modal === "research" ? '#modalCard [data-tech="blitz"]' : "#btnTech"),
+      // The shop opens on the research tree: pick Blitzkrieg in it, then research it.
+      { title: "The Shop", text: c => (st.tech ? "Researched! The Shop also sells supply packs, special ops and boosts. Close it to carry on."
+          : c.modal !== "research" ? `Here's $600 of war funds. Open the <b>Shop</b> (${c.touch ? "the gold 🛒 button" : "<kbd>U</kbd>, or the gold button"} at the top) and research <b>Blitzkrieg</b>.`
+          : c.shopTab !== "tree" ? `${Click(c)} the <b>🔬 Research</b> tab.`
+          : c.techSel !== "blitz" ? `This is the research tree: each upgrade opens the ones below it. ${Click(c)} <b>⚡ Blitzkrieg</b> at the top of the Armor branch.`
+          : `Research lasts for the rest of the war. ${Click(c)} <b>Research</b>.`),
+        target: c => (st.tech ? "#modalCard [data-m=close]" : c.modal !== "research" ? "#btnTech"
+          : c.shopTab !== "tree" ? '#modalCard [data-tab="tree"]' : c.techSel !== "blitz" ? '#modalCard [data-node="blitz"]' : '#modalCard [data-tech="blitz"]'),
         enter: c => { c.me.money += 600; st.techs = c.me.tech.length; },
         watch: c => { if (c.me.tech.length > st.techs) st.tech = true; },
         done: c => !!st.tech && !c.modal },
@@ -7443,7 +7929,7 @@ WD.UI = (() => {
     Bootcamp.init(world, {
       ctx: () => ({
         G: Game.state, me: Game.state.empires[S.me], selected: S.selected, hover: S.hover, frac: S.frac, modal: S.modal, action: S.action,
-        touch: S.touch, target: S.target, radar: !!$("minimap").offsetWidth,
+        touch: S.touch, target: S.target, radar: !!$("minimap").offsetWidth, shopTab: S.shopTab, techSel: S.techSel,
       }),
       beacon: c => Map.beacon(c),
       // Upright phones: fold the panel sheet down to its title while a step doesn't need it, so the map shows.
@@ -7586,6 +8072,7 @@ WD.UI = (() => {
     setAction(null);
     closeTargetCard();
     if (a === "nuke") { fireNuke(c); return; }
+    if (a.startsWith("op:")) { useOp(a.slice(3), c); return; }
     if (from < 0 || !isMine(from)) { toast("Select one of your countries first.", "bad"); return; }
     const hostile = !isMine(c);
     let req;
@@ -7673,7 +8160,7 @@ WD.UI = (() => {
       bombard: `${v} a neighboring country to bombard (${again} it again later to stop)`,
       missile: Game.missileRange(S.me) === Infinity ? `${v} any target on Earth for the missile` : `${v} a target for the missile`,
       nuke: `☢ ${v} an enemy nation for the nuclear strike`,
-    }[a];
+    }[a] || (a.startsWith("op:") ? `${WD.OPS[a.slice(3)].icon} ${v} ${WD.OPS[a.slice(3)].hint}` : "");
     // The ✕ cancels on touchscreens, which have no Esc key.
     hint.innerHTML = `<span>${text}${S.touch ? "" : "<small> · Esc to cancel</small>"}</span><button class="mh-x" aria-label="Cancel">✕</button>`;
     hint.hidden = false;
@@ -8062,6 +8549,7 @@ WD.UI = (() => {
     renderProposals();
     renderOffers();
     renderBounties();
+    renderBoosts();
     const threats = Map.refresh();
     renderAlerts(threats);
     Minimap.draw();
@@ -8415,7 +8903,7 @@ WD.UI = (() => {
     closeChat();
     if (Map.ready()) { select(-1); Map.reset(); }
     setAction(null);
-    for (const id of ["hud", "leaderboard", "alerts", "panel", "targetCard", "pauseBanner", "mission", "bounties", "ticker", "banner"]) $(id).hidden = true;
+    for (const id of ["hud", "leaderboard", "alerts", "panel", "targetCard", "boosts", "pauseBanner", "mission", "bounties", "ticker", "banner"]) $(id).hidden = true;
     $("leaderboard").classList.remove("open");
     $("bounties").classList.remove("open");
     Minimap.hide();
@@ -8521,7 +9009,7 @@ WD.UI = (() => {
     const france = world.byName.get("France").id;
     S.me = 0;
     S.bootcamp = true;
-    S.shopTab = "t0";
+    S.shopTab = "tree";
     S.frac = 0.5;
     Game.newGame(world, {
       mode: "standard", difficulty: "easy", rivals: 2, victory: 100, scenario: "classic", fog: false, tutorial: true,
@@ -8790,6 +9278,8 @@ WD.UI = (() => {
     S.modalPause = false;
     S.selected = -1;
     S.sheetMin = false;
+    S.techSel = null;
+    S.crateNote = null;
     S.panelKey = "";
     S.proposalKey = "";
     S.graceLeft = G.settings.tutorial ? 0 : WD.MODES[G.settings.mode].grace - G.time;
@@ -8966,6 +9456,7 @@ WD.UI = (() => {
     S.modal = name;
     S.modalPause = true;
     document.body.classList.add("modal-open");
+    $("modalCard").dataset.modal = name;
     $("modalCard").innerHTML = html;
     $("modal").hidden = false;
     $("tooltip").hidden = true;
@@ -9077,53 +9568,108 @@ WD.UI = (() => {
   }
 
   // ---------- shop: research tiers and the arsenal ----------
-  const SHOP_TABS = [...WD.TECH_TIERS.map((t, tier) => ({ id: "t" + tier, name: t.name, tier })), { id: "arsenal", name: "Arsenal" }];
+  // The shop: the research tree, supply packs, special ops and boosts.
+  const SHOP_TABS = [
+    { id: "tree", icon: "🔬", name: "Research" },
+    { id: "arsenal", icon: "📦", name: "Arsenal" },
+    { id: "ops", icon: "🎯", name: "Special Ops" },
+    { id: "boosts", icon: "⚡", name: "Boosts" },
+  ];
+  const rise = () => Math.round(WD.RULES.priceRise * 100) + "%";
+  const shopCard = ({ name, icon, desc, price, action, cls = "", extra = "" }) => `<div class="shop-card ${cls}"><span class="s-name">${name}</span>
+    <span class="s-art"><span>${icon}</span></span><span class="s-desc">${desc}</span>${extra}${price}${action}</div>`;
+  const priceTag = (cost, from = "") => `<span class="s-price">${coin("sm")} ${from}${fmt(cost)}</span>`;
+  const lockTag = text => `<span class="s-lock"><i>🔒</i>${text}</span>`;
+  const techState = (me, id) => (me.tech.includes(id) ? "owned" : Game.techLocked(S.me, id) ? "locked" : "open");
 
-  function techCards(me, tier) {
-    const base = Math.round(WD.TECH_TIERS[tier].cost * WD.MODES[Game.state.settings.mode].income / 10) * 10;
-    return WD.TECH_IDS.filter(id => WD.TECHS[id].tier === tier).map(id => {
-      const t = WD.TECHS[id], owned = me.tech.includes(id), locked = !owned && !!Game.techLocked(S.me, id), cost = Game.techCost(S.me, id);
-      const price = owned ? `<span class="s-stamp">Owned</span>` : `<span class="s-price">${coin("sm")} ${cost < base ? `<s>${fmt(base)}</s> ` : ""}${fmt(cost)}</span>`;
-      const action = owned ? "" : locked ? `<span class="s-lock"><i>🔒</i>Locked</span>` : `<button class="primary" data-tech="${id}" data-cost="${cost}">Buy</button>`;
-      return `<div class="shop-card${owned ? " owned" : ""}${locked ? " locked" : ""}"><span class="s-name">${t.name}</span>
-        <span class="s-art"><span>${t.icon}</span></span><span class="s-desc">${t.desc}</span>${price}${action}</div>`;
+  // The research tree: one column per branch, one row per tier, with lines from each technology to
+  // the ones it opens. Click a technology to see it below the tree, then research it from there.
+  function treeHtml(me) {
+    const cols = WD.TECH_BRANCHES.length, rows = WD.TECH_TIERS.length;
+    if (!WD.TECHS[S.techSel]) S.techSel = WD.TECH_IDS.find(id => techState(me, id) === "open") || WD.TECH_IDS[0];
+    // The lines are drawn in grid units on an SVG stretched over the grid, from the bottom of a
+    // technology to the top of each one it opens.
+    const lines = WD.TECH_IDS.flatMap(id => WD.TECHS[id].needs.map(n => {
+      const a = WD.TECHS[n], b = WD.TECHS[id];
+      return `<line class="${me.tech.includes(n) ? "on" : ""}" x1="${a.col + 0.5}" y1="${a.tier + 0.85}" x2="${b.col + 0.5}" y2="${b.tier + 0.15}"/>`;
+    })).join("");
+    const heads = WD.TECH_BRANCHES.map(b => `<span><i>${b.icon}</i><b>${b.name}</b></span>`).join("");
+    const nodes = WD.TECH_IDS.map(id => {
+      const t = WD.TECHS[id], st = techState(me, id);
+      return `<button class="tnode ${st}${id === S.techSel ? " sel" : ""}" data-node="${id}" style="grid-column:${t.col + 1};grid-row:${t.tier + 1}">
+        <i>${t.icon}</i><b>${t.name}</b>${st === "owned" ? "<em>✓</em>" : st === "locked" ? "<em>🔒</em>" : ""}</button>`;
     }).join("");
+    return `<div class="tree-wrap"><div class="tree" style="--cols:${cols};--rows:${rows}">
+        <div class="tree-heads">${heads}</div>
+        <div class="tree-grid"><svg class="tree-lines" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>${nodes}</div>
+      </div></div>
+      <div class="tech-info">${techInfo(me, S.techSel)}</div>`;
+  }
+
+  function techInfo(me, id) {
+    const t = WD.TECHS[id], st = techState(me, id), cost = Game.techCost(S.me, id);
+    const action = st === "owned" ? `<span class="ti-done">✓ Researched</span>`
+      : st === "locked" ? `<span class="ti-lock">🔒 ${Game.techLocked(S.me, id)}</span>`
+      : `<button class="primary" data-tech="${id}" data-cost="${cost}">Research · ${fmt(cost)}</button>`;
+    return `<span class="ti-icon">${t.icon}</span>
+      <div class="ti-body"><small>${WD.TECH_BRANCHES[t.col].name} · ${WD.TECH_TIERS[t.tier].name}</small><b>${t.name}</b><span>${t.desc}</span></div>
+      <div class="ti-act">${action}</div>`;
   }
 
   function arsenalCards(me) {
     const packs = Object.entries(WD.PACKS).map(([id, p]) => {
       const cost = Game.packCost(S.me, id);
-      return `<div class="shop-card"><span class="s-name">${p.name}</span><span class="s-art"><span>${p.icon}</span></span>
-        <span class="s-desc">${p.desc} Delivered to your capital.</span>
-        <span class="s-price">${coin("sm")} ${fmt(cost)}</span><button class="primary" data-pack="${id}" data-cost="${cost}">Buy</button></div>`;
+      return shopCard({ name: p.name, icon: p.icon, desc: p.coastal ? p.desc : `${p.desc} Delivered to your capital.`, price: priceTag(cost),
+        action: `<button class="primary" data-pack="${id}" data-cost="${cost}">Buy</button>` });
     }).join("");
     const nuclear = !!Game.mods(S.me).nuclear;
-    const desc = nuclear ? `In your silos: ${me.nukes}/${WD.RULES.nukeMax}. Destroys 90% of a nation's forces. The whole world will hate you.`
-      : "Needs the Nuclear Program from Tier III.";
-    return packs + `<div class="shop-card${nuclear ? "" : " locked"}"><span class="s-name">Nuclear warhead</span><span class="s-art"><span>☢️</span></span>
-      <span class="s-desc">${desc}</span><span class="s-price">${coin("sm")} ${fmt(Game.nukeCost())}</span>
-      ${nuclear ? `<button class="primary" data-m="buildnuke">Buy</button>` : `<span class="s-lock"><i>🔒</i>Locked</span>`}</div>`;
+    return packs + shopCard({ name: "Nuclear warhead", icon: "☢️", cls: nuclear ? "" : "locked",
+      desc: nuclear ? `In your silos: ${me.nukes}/${WD.RULES.nukeMax}. Destroys 90% of a nation's forces. The whole world will hate you.` : "Needs the Nuclear Program from the research tree.",
+      price: priceTag(Game.nukeCost()), action: nuclear ? `<button class="primary" data-m="buildnuke">Buy</button>` : lockTag("Locked") });
   }
 
-  function openResearch(tab = S.shopTab || "t0") {
+  function opCards() {
+    return Object.entries(WD.OPS).map(([id, op]) => {
+      const cost = Game.opCost(S.me, id), need = op.needs && !Game.mods(S.me)[op.needs];
+      return shopCard({ name: op.name, icon: op.icon, desc: op.desc, cls: need ? "locked" : "", price: priceTag(cost, id === "coup" ? "from " : ""),
+        action: need ? lockTag(`Needs ${WD.TECHS[op.needs].name}`) : `<button class="primary" data-op="${id}" data-cost="${cost}">Use</button>` });
+    }).join("");
+  }
+
+  function boostCards() {
+    const boosts = Object.entries(WD.BOOSTS).map(([id, b]) => {
+      const cost = Game.boostCost(S.me, id), on = b.secs && Game.boostLeft(S.me, id) > 0;
+      return shopCard({ name: b.name, icon: b.icon, desc: b.desc, cls: on ? "active" : "", price: priceTag(cost),
+        extra: b.secs ? `<span class="s-timer" data-left="${id}"></span>` : "",
+        action: `<button class="primary" data-boost="${id}" data-cost="${cost}">${!b.secs ? "Draft now" : on ? "Add time" : "Activate"}</button>` });
+    }).join("");
+    const c = WD.CRATE, cost = Game.crateCost(S.me);
+    return boosts + shopCard({ name: c.name, icon: c.icon, desc: c.desc, cls: "crate", price: priceTag(cost),
+      action: `<button class="primary" data-crate="1" data-cost="${cost}">Open</button>` });
+  }
+
+  function openResearch(tab = S.shopTab || "tree") {
     const G = Game.state, me = G.empires[S.me];
     let i = SHOP_TABS.findIndex(t => t.id === tab);
     if (i < 0) i = 0;
-    S.shopTab = SHOP_TABS[i].id;
     const sel = SHOP_TABS[i];
-    const tabs = SHOP_TABS.map(t => {
-      const locked = t.tier !== undefined && me.tech.length < WD.TECH_TIERS[t.tier].needs;
-      return `<button class="tab${t === sel ? " on" : ""}" data-tab="${t.id}">${t.name}${locked ? ' <span class="lock">🔒</span>' : ""}</button>`;
-    }).join("");
-    let note = `Research works instantly and lasts all war. You have ${me.tech.length} of ${WD.TECH_IDS.length}.`;
-    if (sel.tier !== undefined && me.tech.length < WD.TECH_TIERS[sel.tier].needs) note = `${sel.name} opens once you've researched ${WD.TECH_TIERS[sel.tier].needs} technologies. You have ${me.tech.length}.`;
-    if (sel.id === "arsenal") note = me.nukes > 0 ? `<button class="danger" data-m="launch">☢ Launch a warhead (N)</button>` : "Supplies arrive at your capital straight away, with veteran crews where noted.";
+    S.shopTab = sel.id;
+    const tabs = SHOP_TABS.map(t => `<button class="tab${t === sel ? " on" : ""}" data-tab="${t.id}"><i>${t.icon}</i> <span>${t.name}</span></button>`).join("");
+    const body = sel.id === "tree" ? treeHtml(me)
+      : `<div class="shop-grid">${sel.id === "arsenal" ? arsenalCards(me) : sel.id === "ops" ? opCards() : boostCards()}</div>`;
+    const crate = S.crateNote && sel.id === "boosts" ? `<span class="crate-note ${S.crateNote.rarity.toLowerCase()}">${esc(S.crateNote.text)}</span> ` : "";
+    const note = {
+      tree: `Research lasts all war, and each technology opens the ones below it. You have ${me.tech.length} of ${WD.TECH_IDS.length}.`,
+      arsenal: me.nukes > 0 ? `<button class="danger" data-m="launch">☢ Launch a warhead (N)</button>` : `Supplies arrive straight away. A pack costs ${rise()} more every time you buy it.`,
+      ops: `Pick an op, then its target on the map. You only pay if it goes ahead, and each op costs ${rise()} more every time.`,
+      boosts: `${crate}Boosts work across your whole empire, and buying one again adds time. Prices rise ${rise()} with every purchase.`,
+    }[sel.id];
     openModal("research", `<div class="shop"><h2 class="ribbon">Shop</h2>
       <div class="shop-wallet">${coin()}<span id="shopMoney">${fmt(me.money)}</span></div>
       <div class="tabs">${tabs}</div>
-      <div class="shop-body">
+      <div class="shop-body${sel.id === "tree" ? " is-tree" : ""}">
         <button class="shop-arrow left" data-tabstep="-1" ${i === 0 ? "disabled" : ""} aria-label="Previous tab">◀</button>
-        <div class="shop-grid">${sel.tier !== undefined ? techCards(me, sel.tier) : arsenalCards(me)}</div>
+        ${body}
         <button class="shop-arrow right" data-tabstep="1" ${i === SHOP_TABS.length - 1 ? "disabled" : ""} aria-label="Next tab">▶</button>
       </div>
       <p class="shop-note">${note}</p>
@@ -9131,16 +9677,43 @@ WD.UI = (() => {
     updateResearch();
   }
 
-  // Keep the shop's buttons in step with the treasury while it's open.
+  // Keep the shop's buttons, prices and boost timers in step with the war while it's open.
   function updateResearch() {
     const me = Game.state.empires[S.me], card = $("modalCard");
     const money = $("shopMoney");
     if (money) money.textContent = fmt(me.money);
-    for (const b of card.querySelectorAll("[data-tech], [data-pack]")) b.disabled = me.money < +b.dataset.cost;
+    for (const b of card.querySelectorAll("[data-tech], [data-pack], [data-op], [data-boost], [data-crate]")) b.disabled = me.money < +b.dataset.cost;
+    for (const n of card.querySelectorAll(".tnode.open")) n.classList.toggle("poor", me.money < Game.techCost(S.me, n.dataset.node));
+    for (const el of card.querySelectorAll("[data-left]")) {
+      const left = Game.boostLeft(S.me, el.dataset.left), text = left > 0 ? `Active · ${fmtTime(left)} left` : "";
+      if (el.textContent !== text) el.textContent = text;
+      el.closest(".shop-card").classList.toggle("active", left > 0);
+    }
     const build = card.querySelector('[data-m="buildnuke"]');
     if (build) build.disabled = me.money < Game.nukeCost() || me.nukes >= WD.RULES.nukeMax;
     const launch = card.querySelector('[data-m="launch"]');
     if (launch) launch.disabled = me.nukes < 1;
+  }
+
+  // Running boosts and the time they have left, in a strip under the top bar.
+  function renderBoosts() {
+    const box = $("boosts");
+    const list = Object.keys(WD.BOOSTS).filter(id => WD.BOOSTS[id].secs && Game.boostLeft(S.me, id) > 0);
+    box.hidden = !list.length;
+    if (!list.length) return;
+    const html = list.map(id => `<span title="${esc(WD.BOOSTS[id].name)}">${WD.BOOSTS[id].icon} ${fmtTime(Game.boostLeft(S.me, id))}</span>`).join("");
+    if (box.innerHTML !== html) box.innerHTML = html;
+  }
+
+  // A special op lands on the nation picked on the map. It's only paid for if it goes ahead.
+  function useOp(id, c) {
+    act("useOp", id, c).then(r => {
+      if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); return; }
+      toast(r.text, "good");
+      Sound.play({ sabotage: "boom", orbital: "bigBoom", paratroopers: "jet", spy: "cash", coup: "capture" }[id] || "boom");
+      Map.flash(c);
+      updateHud();
+    });
   }
 
   // ---------- autopilot ----------
@@ -9158,9 +9731,14 @@ WD.UI = (() => {
         ${row("reinforce", "🚚 Auto-reinforce", "Idle troops in nations with no enemy next door march to threatened borders.", a.reinforce)}
         ${row("retake", "⚔ Auto-retake", "When you lose a nation, nearby troops strike back if they can win it.", a.retake)}
         ${row("caretaker", "🏦 Caretaker", "If you give no orders for a minute, the autopilot may also spend your savings on defense.", a.caretaker)}
+        <h4 class="auto-h">🧠 Smart troops</h4>
+        ${row("front", "🧭 Gather at the front", "Idle troops in nations surrounded by your own land march overland to your borders with enemy empires, wherever they can hold the line.", a.front)}
+        ${row("expand", "🏳 Take weak neighbors", "Border armies away from enemy empires capture independent nations next door, one at a time, with 2½ times the strength needed. A quarter stays home.", a.expand)}
+        ${row("attack", "🎯 Attack enemies", "The same against empires you're at war with, once the opening ceasefire is over, if the border can still hold afterwards.", a.attack)}
+        ${row("retreat", "↩ Pull out of lost battles", "An attack facing more than 2½ times its strength comes home before it's wiped out.", a.retreat)}
       </div>
       <div class="auto-stats"><div><b>$${fmt(st.spent || 0)}</b><span>Spent</span></div><div><b>${fmt(st.recruited || 0)}</b><span>Recruited</span></div>
-        <div><b>${fmt(st.moved || 0)}</b><span>Troops sent</span></div><div><b>${st.retaken || 0}</b><span>Won back</span></div></div>
+        <div><b>${fmt(st.moved || 0)}</b><span>Troops sent</span></div><div><b>${(st.retaken || 0) + (st.taken || 0)}</b><span>Nations taken</span></div></div>
       <div class="foot"><button class="primary" data-m="close">Done</button></div>`);
     autoBudgetLabel(a.budget);
   }
@@ -9177,6 +9755,10 @@ WD.UI = (() => {
       reinforce: card.querySelector('[data-auto="reinforce"]').checked,
       retake: card.querySelector('[data-auto="retake"]').checked,
       caretaker: card.querySelector('[data-auto="caretaker"]').checked,
+      front: card.querySelector('[data-auto="front"]').checked,
+      expand: card.querySelector('[data-auto="expand"]').checked,
+      attack: card.querySelector('[data-auto="attack"]').checked,
+      retreat: card.querySelector('[data-auto="retreat"]').checked,
     };
     act("setAutopilot", cfg).then(r => {
       if (!r.ok) { toast(r.reason, "bad"); return; }
@@ -9367,6 +9949,39 @@ WD.UI = (() => {
           toast(`📦 ${p.name} delivered to ${nameOf(r.at)}.`, "good");
           Sound.play("cash");
           Map.flash(r.at);
+        }
+        if (S.modal === "research") openResearch();
+      });
+      return;
+    }
+    // A technology in the research tree: show it below the tree.
+    if (b.dataset.node) {
+      S.techSel = b.dataset.node;
+      for (const n of $("modalCard").querySelectorAll(".tnode")) n.classList.toggle("sel", n.dataset.node === S.techSel);
+      $("modalCard").querySelector(".tech-info").innerHTML = techInfo(Game.state.empires[S.me], S.techSel);
+      updateResearch();
+      return;
+    }
+    // A special op: close the shop and pick its target on the map.
+    if (b.dataset.op) { closeModal(); setAction("op:" + b.dataset.op); return; }
+    if (b.dataset.boost) {
+      b.disabled = true;
+      act("buyBoost", b.dataset.boost).then(r => {
+        if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); }
+        else { toast(r.text, "good"); Sound.play("research"); renderBoosts(); }
+        if (S.modal === "research") openResearch();
+      });
+      return;
+    }
+    if (b.dataset.crate) {
+      b.disabled = true;
+      act("openCrate").then(r => {
+        if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); }
+        else {
+          S.crateNote = { text: r.text, rarity: r.rarity || "Common" };
+          toast(r.text, "good");
+          Sound.play(r.rarity === "Epic" || r.rarity === "Rare" ? "medal" : "cash");
+          renderBoosts();
         }
         if (S.modal === "research") openResearch();
       });

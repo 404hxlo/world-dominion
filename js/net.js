@@ -8,7 +8,7 @@ WD.Net = (() => {
   const PREFIX = "world-dominion-";
   const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O or 1/I mix-ups
   const SNAPSHOT_MS = 250;
-  const COMMANDS = ["sendArmy", "buy", "launchAir", "launchMissile", "toggleBombard", "propose", "answerProposal", "declareWar", "research", "buildNuke", "launchNuke", "answerOffer", "buyPack", "setAutopilot"];
+  const COMMANDS = ["sendArmy", "buy", "launchAir", "launchMissile", "toggleBombard", "propose", "answerProposal", "declareWar", "research", "buildNuke", "launchNuke", "answerOffer", "buyPack", "setAutopilot", "useOp", "buyBoost", "openCrate"];
   // Game events the host passes on: to the player they're meant for, or to everyone.
   const TARGETED = ["log", "medal", "bounty", "research", "banner"];
   const BROADCAST = ["news", "explosion", "nuke", "nukeLaunch", "intercept", "eventFx"];
@@ -285,17 +285,20 @@ WD.Net = (() => {
       case "buildNuke": return a.length === 0;
       case "launchNuke": return isCountry(a[0]);
       case "buyPack": return typeof a[0] === "string" && Object.prototype.hasOwnProperty.call(WD.PACKS, a[0]);
+      case "useOp": return typeof a[0] === "string" && Object.prototype.hasOwnProperty.call(WD.OPS, a[0]) && isCountry(a[1]);
+      case "buyBoost": return typeof a[0] === "string" && Object.prototype.hasOwnProperty.call(WD.BOOSTS, a[0]);
+      case "openCrate": return a.length === 0;
       case "setAutopilot": {
         const cfg = a[0];
         return !!cfg && typeof cfg === "object" && typeof cfg.budget === "number" && cfg.budget >= 0 && cfg.budget <= 0.5 &&
-          typeof cfg.reinforce === "boolean" && typeof cfg.retake === "boolean" && typeof cfg.caretaker === "boolean";
+          ["reinforce", "retake", "caretaker", "front", "expand", "attack", "retreat"].every(k => typeof cfg[k] === "boolean");
       }
     }
     return false;
   }
 
   function runCommand(c, msg) {
-    const reply = r => send(c.conn, { t: "res", id: msg.id, r: { ok: !!r.ok, reason: r.reason, pending: r.pending, stopped: r.stopped, rebase: r.rebase, quote: r.quote, delivered: r.delivered, at: r.at } });
+    const reply = r => send(c.conn, { t: "res", id: msg.id, r: { ok: !!r.ok, reason: r.reason, pending: r.pending, stopped: r.stopped, rebase: r.rebase, quote: r.quote, delivered: r.delivered, at: r.at, text: r.text, rarity: r.rarity } });
     const seat = c.player.seat;
     if (!N.inGame || seat == null || !COMMANDS.includes(msg.op) || !Array.isArray(msg.args) || !validOrder(msg.op, msg.args)) {
       reply({ ok: false, reason: "The host couldn't accept that order." });

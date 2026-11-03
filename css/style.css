@@ -847,9 +847,67 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 .shop-card .s-lock { display: flex; flex-direction: column; align-items: center; gap: 2px; font: 400 11px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #5a1a10; }
 .shop-card .s-lock i { font-style: normal; font-size: 18px; }
 .shop-note { margin: 12px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+.tab i { font-style: normal; }
+.shop-card.active { box-shadow: inset 0 1px 0 #fff, 0 0 0 2px var(--good), 0 0 16px rgba(107, 214, 94, 0.45), 0 6px 12px rgba(0, 0, 0, 0.45); }
+.shop-card .s-timer { min-height: 14px; font: 400 10.5px var(--display); color: #2c7a12; letter-spacing: 0.04em; text-transform: uppercase; }
+.shop-card.crate .s-art { background: radial-gradient(circle at 50% 38%, #fff6d0, #ffd055 55%, #c27a0c); }
+.crate-note { display: inline-block; margin-bottom: 4px; padding: 3px 10px; border-radius: 6px; font: 600 12.5px var(--font); color: #fff; background: #4b525a; }
+.crate-note.uncommon { background: #2f7a1c; }
+.crate-note.rare { background: #1f5fae; }
+.crate-note.epic { background: linear-gradient(90deg, #7b2fbe, #c43ad6); }
+
+/* ---------- research tree ---------- */
+/* One column per branch and one row per tier. The lines between technologies are an SVG
+   stretched over the grid, drawn in grid units. */
+.shop-body.is-tree { padding: 12px 36px; }
+.tree-wrap { overflow-x: auto; overscroll-behavior: contain; padding: 8px 0 2px; }
+.tree { min-width: 560px; }
+/* The shop is wider than other windows, so the whole tree fits. */
+@media (min-width: 800px) { .modal-card[data-modal="research"] { width: 780px; } }
+.tree-heads, .tree-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); column-gap: 8px; }
+.tree-heads span { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.tree-heads i { font-style: normal; font-size: 17px; line-height: 1; }
+.tree-heads b { font: 400 9.5px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 1px #000; }
+.tree-grid { position: relative; grid-template-rows: repeat(var(--rows), 88px); margin-top: 6px; }
+.tree-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.tree-lines line { stroke: rgba(15, 17, 20, 0.55); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.tree-lines line.on { stroke: var(--gold); }
+.tnode {
+  position: relative; z-index: 1; align-self: center; justify-self: center; width: 100%; max-width: 92px; height: 66px; padding: 4px 3px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 9px; color: #1c1f23;
+  background: linear-gradient(180deg, #e7eaee, #b9c0c8); border: 1px solid #000; box-shadow: inset 0 1px 0 #fff, 0 3px 0 #1a1c20;
+  transition: transform 0.08s, filter 0.15s;
+}
+.tnode:hover { filter: brightness(1.08); }
+.tnode:active { transform: translateY(1px); }
+.tnode i { font-style: normal; font-size: 22px; line-height: 1; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.3)); }
+.tnode b { font: 400 9px var(--display); letter-spacing: 0.02em; text-transform: uppercase; text-align: center; line-height: 1.15; }
+.tnode em { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 400 11px var(--display); font-style: normal; border: 1px solid #000; background: #2a2e33; }
+.tnode.owned { background: linear-gradient(180deg, #e3ffcf, #8fd968); }
+.tnode.owned em { color: #fff; background: var(--green-face); }
+.tnode.open { box-shadow: inset 0 1px 0 #fff, 0 3px 0 #1a1c20, 0 0 0 2px var(--gold), 0 0 12px rgba(255, 200, 80, 0.45); }
+.tnode.open.poor { box-shadow: inset 0 1px 0 #fff, 0 3px 0 #1a1c20, 0 0 0 2px rgba(255, 200, 80, 0.4); }
+.tnode.locked { filter: grayscale(1) brightness(0.62); }
+.tnode.locked em { font-size: 10px; }
+.tnode.sel { outline: 3px solid #fff; outline-offset: 2px; }
+.tech-info { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 12px; border-radius: 9px; background: var(--well); border: 1px solid #050608; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.62); }
+.ti-icon { flex: none; font-size: 30px; }
+.ti-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ti-body small { font: 400 9.5px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ti-body b { font: 400 15px var(--display); color: var(--gold-2); text-shadow: 0 1px 0 #000; }
+.ti-body span { font-size: 12.5px; color: #e3e7ec; line-height: 1.35; }
+.ti-act { flex: none; }
+.ti-act .primary { padding: 9px 14px; white-space: nowrap; }
+.ti-lock { display: block; max-width: 170px; font-size: 12px; color: var(--warn); text-align: right; }
+.ti-done { font: 400 12px var(--display); color: var(--good); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Running boosts and their time left, under the top bar beside the panel. */
+#boosts { position: fixed; top: calc(var(--hud-h) + var(--sat) + 12px); right: calc(344px + var(--sar)); z-index: 6; display: flex; gap: 6px; pointer-events: none; }
+#boosts span { padding: 4px 9px; border-radius: 999px; font: 400 12px var(--display); font-variant-numeric: tabular-nums; color: #102806; background: var(--green-face); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5); }
 
 /* ---------- autopilot ---------- */
 .auto-list { display: flex; flex-direction: column; gap: 8px; }
+.auto-h { margin: 8px 0 0; font: 400 11.5px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-2); text-align: center; }
 .auto-budget { display: flex; align-items: center; gap: 12px; }
 .auto-budget input { flex: 1; }
 .auto-budget b { min-width: 98px; text-align: right; font: 400 15px var(--display); color: var(--gold-2); }
@@ -1038,6 +1096,24 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   /* Phones zoom into small text fields when they get focus. */
   select, #mpName, #mpCode, #chatInput { font-size: 16px; }
   .menu-tools { position: fixed; top: calc(10px + var(--sat)); right: calc(10px + var(--sar)); z-index: 41; }
+  /* The research tree shrinks and scrolls sideways. */
+  .shop-body.is-tree { padding: 10px 26px; }
+  .tree { min-width: 420px; }
+  .tree-heads, .tree-grid { column-gap: 5px; }
+  .tree-heads i { font-size: 14px; }
+  .tree-heads b { font-size: 7.5px; letter-spacing: 0.04em; }
+  .tree-grid { grid-template-rows: repeat(var(--rows), 70px); }
+  .tnode { max-width: 66px; height: 56px; padding: 3px 2px; gap: 2px; }
+  .tnode i { font-size: 18px; }
+  .tnode b { font-size: 7.5px; }
+  .tnode em { width: 17px; height: 17px; font-size: 9.5px; top: -6px; right: -6px; }
+  .tech-info { flex-wrap: wrap; gap: 6px 10px; padding: 9px 10px; }
+  .ti-icon { font-size: 24px; }
+  .ti-body { flex-basis: calc(100% - 44px); }
+  .ti-act { flex-basis: 100%; }
+  .ti-act .primary { width: 100%; }
+  .ti-lock { max-width: none; text-align: left; }
+  #boosts { top: calc(var(--hud-h) + var(--sat) + 8px + var(--top-h)); right: calc(6px + var(--sar)); }
 }
 
 /* ---------- phones held upright ---------- */
@@ -1098,6 +1174,11 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   body.targeting #panel { display: none; }
   #targetCard { left: calc(4px + var(--sal)); right: calc(4px + var(--sar)); bottom: calc(var(--foot-h) + var(--sab) + 4px); width: auto; transform: none; border-radius: 14px 14px 9px 9px; }
 
+  /* Four shop tabs: only the open one keeps its name. */
+  .tab span { display: none; }
+  .tab.on span { display: inline; }
+  .tab i { font-size: 15px; }
+
   #menu { top: 33%; left: 0; right: 0; bottom: 0; width: auto; padding: 18px 12px calc(16px + var(--sab)); border-radius: 18px 18px 0 0; }
   #menu .logo { font-size: 28px; }
   .tagline { margin: 8px 0 12px; font-size: 11.5px; }
@@ -1156,4 +1237,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
   .shop-card .s-art { width: 44px; height: 44px; font-size: 22px; }
   .shop-note { margin-top: 6px; }
   .modal-card .foot { margin-top: 8px; }
+  #boosts { right: calc(290px + var(--sar)); }
+  .tree-grid { grid-template-rows: repeat(var(--rows), 62px); }
+  .tnode { height: 52px; }
 }

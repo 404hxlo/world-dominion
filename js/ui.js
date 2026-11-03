@@ -136,7 +136,7 @@ WD.UI = (() => {
     Bootcamp.init(world, {
       ctx: () => ({
         G: Game.state, me: Game.state.empires[S.me], selected: S.selected, hover: S.hover, frac: S.frac, modal: S.modal, action: S.action,
-        touch: S.touch, target: S.target, radar: !!$("minimap").offsetWidth,
+        touch: S.touch, target: S.target, radar: !!$("minimap").offsetWidth, shopTab: S.shopTab, techSel: S.techSel,
       }),
       beacon: c => Map.beacon(c),
       // Upright phones: fold the panel sheet down to its title while a step doesn't need it, so the map shows.
@@ -279,6 +279,7 @@ WD.UI = (() => {
     setAction(null);
     closeTargetCard();
     if (a === "nuke") { fireNuke(c); return; }
+    if (a.startsWith("op:")) { useOp(a.slice(3), c); return; }
     if (from < 0 || !isMine(from)) { toast("Select one of your countries first.", "bad"); return; }
     const hostile = !isMine(c);
     let req;
@@ -366,7 +367,7 @@ WD.UI = (() => {
       bombard: `${v} a neighboring country to bombard (${again} it again later to stop)`,
       missile: Game.missileRange(S.me) === Infinity ? `${v} any target on Earth for the missile` : `${v} a target for the missile`,
       nuke: `☢ ${v} an enemy nation for the nuclear strike`,
-    }[a];
+    }[a] || (a.startsWith("op:") ? `${WD.OPS[a.slice(3)].icon} ${v} ${WD.OPS[a.slice(3)].hint}` : "");
     // The ✕ cancels on touchscreens, which have no Esc key.
     hint.innerHTML = `<span>${text}${S.touch ? "" : "<small> · Esc to cancel</small>"}</span><button class="mh-x" aria-label="Cancel">✕</button>`;
     hint.hidden = false;
@@ -755,6 +756,7 @@ WD.UI = (() => {
     renderProposals();
     renderOffers();
     renderBounties();
+    renderBoosts();
     const threats = Map.refresh();
     renderAlerts(threats);
     Minimap.draw();
@@ -1108,7 +1110,7 @@ WD.UI = (() => {
     closeChat();
     if (Map.ready()) { select(-1); Map.reset(); }
     setAction(null);
-    for (const id of ["hud", "leaderboard", "alerts", "panel", "targetCard", "pauseBanner", "mission", "bounties", "ticker", "banner"]) $(id).hidden = true;
+    for (const id of ["hud", "leaderboard", "alerts", "panel", "targetCard", "boosts", "pauseBanner", "mission", "bounties", "ticker", "banner"]) $(id).hidden = true;
     $("leaderboard").classList.remove("open");
     $("bounties").classList.remove("open");
     Minimap.hide();
@@ -1214,7 +1216,7 @@ WD.UI = (() => {
     const france = world.byName.get("France").id;
     S.me = 0;
     S.bootcamp = true;
-    S.shopTab = "t0";
+    S.shopTab = "tree";
     S.frac = 0.5;
     Game.newGame(world, {
       mode: "standard", difficulty: "easy", rivals: 2, victory: 100, scenario: "classic", fog: false, tutorial: true,
@@ -1483,6 +1485,8 @@ WD.UI = (() => {
     S.modalPause = false;
     S.selected = -1;
     S.sheetMin = false;
+    S.techSel = null;
+    S.crateNote = null;
     S.panelKey = "";
     S.proposalKey = "";
     S.graceLeft = G.settings.tutorial ? 0 : WD.MODES[G.settings.mode].grace - G.time;
@@ -1659,6 +1663,7 @@ WD.UI = (() => {
     S.modal = name;
     S.modalPause = true;
     document.body.classList.add("modal-open");
+    $("modalCard").dataset.modal = name;
     $("modalCard").innerHTML = html;
     $("modal").hidden = false;
     $("tooltip").hidden = true;
@@ -1770,53 +1775,108 @@ WD.UI = (() => {
   }
 
   // ---------- shop: research tiers and the arsenal ----------
-  const SHOP_TABS = [...WD.TECH_TIERS.map((t, tier) => ({ id: "t" + tier, name: t.name, tier })), { id: "arsenal", name: "Arsenal" }];
+  // The shop: the research tree, supply packs, special ops and boosts.
+  const SHOP_TABS = [
+    { id: "tree", icon: "🔬", name: "Research" },
+    { id: "arsenal", icon: "📦", name: "Arsenal" },
+    { id: "ops", icon: "🎯", name: "Special Ops" },
+    { id: "boosts", icon: "⚡", name: "Boosts" },
+  ];
+  const rise = () => Math.round(WD.RULES.priceRise * 100) + "%";
+  const shopCard = ({ name, icon, desc, price, action, cls = "", extra = "" }) => `<div class="shop-card ${cls}"><span class="s-name">${name}</span>
+    <span class="s-art"><span>${icon}</span></span><span class="s-desc">${desc}</span>${extra}${price}${action}</div>`;
+  const priceTag = (cost, from = "") => `<span class="s-price">${coin("sm")} ${from}${fmt(cost)}</span>`;
+  const lockTag = text => `<span class="s-lock"><i>🔒</i>${text}</span>`;
+  const techState = (me, id) => (me.tech.includes(id) ? "owned" : Game.techLocked(S.me, id) ? "locked" : "open");
 
-  function techCards(me, tier) {
-    const base = Math.round(WD.TECH_TIERS[tier].cost * WD.MODES[Game.state.settings.mode].income / 10) * 10;
-    return WD.TECH_IDS.filter(id => WD.TECHS[id].tier === tier).map(id => {
-      const t = WD.TECHS[id], owned = me.tech.includes(id), locked = !owned && !!Game.techLocked(S.me, id), cost = Game.techCost(S.me, id);
-      const price = owned ? `<span class="s-stamp">Owned</span>` : `<span class="s-price">${coin("sm")} ${cost < base ? `<s>${fmt(base)}</s> ` : ""}${fmt(cost)}</span>`;
-      const action = owned ? "" : locked ? `<span class="s-lock"><i>🔒</i>Locked</span>` : `<button class="primary" data-tech="${id}" data-cost="${cost}">Buy</button>`;
-      return `<div class="shop-card${owned ? " owned" : ""}${locked ? " locked" : ""}"><span class="s-name">${t.name}</span>
-        <span class="s-art"><span>${t.icon}</span></span><span class="s-desc">${t.desc}</span>${price}${action}</div>`;
+  // The research tree: one column per branch, one row per tier, with lines from each technology to
+  // the ones it opens. Click a technology to see it below the tree, then research it from there.
+  function treeHtml(me) {
+    const cols = WD.TECH_BRANCHES.length, rows = WD.TECH_TIERS.length;
+    if (!WD.TECHS[S.techSel]) S.techSel = WD.TECH_IDS.find(id => techState(me, id) === "open") || WD.TECH_IDS[0];
+    // The lines are drawn in grid units on an SVG stretched over the grid, from the bottom of a
+    // technology to the top of each one it opens.
+    const lines = WD.TECH_IDS.flatMap(id => WD.TECHS[id].needs.map(n => {
+      const a = WD.TECHS[n], b = WD.TECHS[id];
+      return `<line class="${me.tech.includes(n) ? "on" : ""}" x1="${a.col + 0.5}" y1="${a.tier + 0.85}" x2="${b.col + 0.5}" y2="${b.tier + 0.15}"/>`;
+    })).join("");
+    const heads = WD.TECH_BRANCHES.map(b => `<span><i>${b.icon}</i><b>${b.name}</b></span>`).join("");
+    const nodes = WD.TECH_IDS.map(id => {
+      const t = WD.TECHS[id], st = techState(me, id);
+      return `<button class="tnode ${st}${id === S.techSel ? " sel" : ""}" data-node="${id}" style="grid-column:${t.col + 1};grid-row:${t.tier + 1}">
+        <i>${t.icon}</i><b>${t.name}</b>${st === "owned" ? "<em>✓</em>" : st === "locked" ? "<em>🔒</em>" : ""}</button>`;
     }).join("");
+    return `<div class="tree-wrap"><div class="tree" style="--cols:${cols};--rows:${rows}">
+        <div class="tree-heads">${heads}</div>
+        <div class="tree-grid"><svg class="tree-lines" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>${nodes}</div>
+      </div></div>
+      <div class="tech-info">${techInfo(me, S.techSel)}</div>`;
+  }
+
+  function techInfo(me, id) {
+    const t = WD.TECHS[id], st = techState(me, id), cost = Game.techCost(S.me, id);
+    const action = st === "owned" ? `<span class="ti-done">✓ Researched</span>`
+      : st === "locked" ? `<span class="ti-lock">🔒 ${Game.techLocked(S.me, id)}</span>`
+      : `<button class="primary" data-tech="${id}" data-cost="${cost}">Research · ${fmt(cost)}</button>`;
+    return `<span class="ti-icon">${t.icon}</span>
+      <div class="ti-body"><small>${WD.TECH_BRANCHES[t.col].name} · ${WD.TECH_TIERS[t.tier].name}</small><b>${t.name}</b><span>${t.desc}</span></div>
+      <div class="ti-act">${action}</div>`;
   }
 
   function arsenalCards(me) {
     const packs = Object.entries(WD.PACKS).map(([id, p]) => {
       const cost = Game.packCost(S.me, id);
-      return `<div class="shop-card"><span class="s-name">${p.name}</span><span class="s-art"><span>${p.icon}</span></span>
-        <span class="s-desc">${p.desc} Delivered to your capital.</span>
-        <span class="s-price">${coin("sm")} ${fmt(cost)}</span><button class="primary" data-pack="${id}" data-cost="${cost}">Buy</button></div>`;
+      return shopCard({ name: p.name, icon: p.icon, desc: p.coastal ? p.desc : `${p.desc} Delivered to your capital.`, price: priceTag(cost),
+        action: `<button class="primary" data-pack="${id}" data-cost="${cost}">Buy</button>` });
     }).join("");
     const nuclear = !!Game.mods(S.me).nuclear;
-    const desc = nuclear ? `In your silos: ${me.nukes}/${WD.RULES.nukeMax}. Destroys 90% of a nation's forces. The whole world will hate you.`
-      : "Needs the Nuclear Program from Tier III.";
-    return packs + `<div class="shop-card${nuclear ? "" : " locked"}"><span class="s-name">Nuclear warhead</span><span class="s-art"><span>☢️</span></span>
-      <span class="s-desc">${desc}</span><span class="s-price">${coin("sm")} ${fmt(Game.nukeCost())}</span>
-      ${nuclear ? `<button class="primary" data-m="buildnuke">Buy</button>` : `<span class="s-lock"><i>🔒</i>Locked</span>`}</div>`;
+    return packs + shopCard({ name: "Nuclear warhead", icon: "☢️", cls: nuclear ? "" : "locked",
+      desc: nuclear ? `In your silos: ${me.nukes}/${WD.RULES.nukeMax}. Destroys 90% of a nation's forces. The whole world will hate you.` : "Needs the Nuclear Program from the research tree.",
+      price: priceTag(Game.nukeCost()), action: nuclear ? `<button class="primary" data-m="buildnuke">Buy</button>` : lockTag("Locked") });
   }
 
-  function openResearch(tab = S.shopTab || "t0") {
+  function opCards() {
+    return Object.entries(WD.OPS).map(([id, op]) => {
+      const cost = Game.opCost(S.me, id), need = op.needs && !Game.mods(S.me)[op.needs];
+      return shopCard({ name: op.name, icon: op.icon, desc: op.desc, cls: need ? "locked" : "", price: priceTag(cost, id === "coup" ? "from " : ""),
+        action: need ? lockTag(`Needs ${WD.TECHS[op.needs].name}`) : `<button class="primary" data-op="${id}" data-cost="${cost}">Use</button>` });
+    }).join("");
+  }
+
+  function boostCards() {
+    const boosts = Object.entries(WD.BOOSTS).map(([id, b]) => {
+      const cost = Game.boostCost(S.me, id), on = b.secs && Game.boostLeft(S.me, id) > 0;
+      return shopCard({ name: b.name, icon: b.icon, desc: b.desc, cls: on ? "active" : "", price: priceTag(cost),
+        extra: b.secs ? `<span class="s-timer" data-left="${id}"></span>` : "",
+        action: `<button class="primary" data-boost="${id}" data-cost="${cost}">${!b.secs ? "Draft now" : on ? "Add time" : "Activate"}</button>` });
+    }).join("");
+    const c = WD.CRATE, cost = Game.crateCost(S.me);
+    return boosts + shopCard({ name: c.name, icon: c.icon, desc: c.desc, cls: "crate", price: priceTag(cost),
+      action: `<button class="primary" data-crate="1" data-cost="${cost}">Open</button>` });
+  }
+
+  function openResearch(tab = S.shopTab || "tree") {
     const G = Game.state, me = G.empires[S.me];
     let i = SHOP_TABS.findIndex(t => t.id === tab);
     if (i < 0) i = 0;
-    S.shopTab = SHOP_TABS[i].id;
     const sel = SHOP_TABS[i];
-    const tabs = SHOP_TABS.map(t => {
-      const locked = t.tier !== undefined && me.tech.length < WD.TECH_TIERS[t.tier].needs;
-      return `<button class="tab${t === sel ? " on" : ""}" data-tab="${t.id}">${t.name}${locked ? ' <span class="lock">🔒</span>' : ""}</button>`;
-    }).join("");
-    let note = `Research works instantly and lasts all war. You have ${me.tech.length} of ${WD.TECH_IDS.length}.`;
-    if (sel.tier !== undefined && me.tech.length < WD.TECH_TIERS[sel.tier].needs) note = `${sel.name} opens once you've researched ${WD.TECH_TIERS[sel.tier].needs} technologies. You have ${me.tech.length}.`;
-    if (sel.id === "arsenal") note = me.nukes > 0 ? `<button class="danger" data-m="launch">☢ Launch a warhead (N)</button>` : "Supplies arrive at your capital straight away, with veteran crews where noted.";
+    S.shopTab = sel.id;
+    const tabs = SHOP_TABS.map(t => `<button class="tab${t === sel ? " on" : ""}" data-tab="${t.id}"><i>${t.icon}</i> <span>${t.name}</span></button>`).join("");
+    const body = sel.id === "tree" ? treeHtml(me)
+      : `<div class="shop-grid">${sel.id === "arsenal" ? arsenalCards(me) : sel.id === "ops" ? opCards() : boostCards()}</div>`;
+    const crate = S.crateNote && sel.id === "boosts" ? `<span class="crate-note ${S.crateNote.rarity.toLowerCase()}">${esc(S.crateNote.text)}</span> ` : "";
+    const note = {
+      tree: `Research lasts all war, and each technology opens the ones below it. You have ${me.tech.length} of ${WD.TECH_IDS.length}.`,
+      arsenal: me.nukes > 0 ? `<button class="danger" data-m="launch">☢ Launch a warhead (N)</button>` : `Supplies arrive straight away. A pack costs ${rise()} more every time you buy it.`,
+      ops: `Pick an op, then its target on the map. You only pay if it goes ahead, and each op costs ${rise()} more every time.`,
+      boosts: `${crate}Boosts work across your whole empire, and buying one again adds time. Prices rise ${rise()} with every purchase.`,
+    }[sel.id];
     openModal("research", `<div class="shop"><h2 class="ribbon">Shop</h2>
       <div class="shop-wallet">${coin()}<span id="shopMoney">${fmt(me.money)}</span></div>
       <div class="tabs">${tabs}</div>
-      <div class="shop-body">
+      <div class="shop-body${sel.id === "tree" ? " is-tree" : ""}">
         <button class="shop-arrow left" data-tabstep="-1" ${i === 0 ? "disabled" : ""} aria-label="Previous tab">◀</button>
-        <div class="shop-grid">${sel.tier !== undefined ? techCards(me, sel.tier) : arsenalCards(me)}</div>
+        ${body}
         <button class="shop-arrow right" data-tabstep="1" ${i === SHOP_TABS.length - 1 ? "disabled" : ""} aria-label="Next tab">▶</button>
       </div>
       <p class="shop-note">${note}</p>
@@ -1824,16 +1884,43 @@ WD.UI = (() => {
     updateResearch();
   }
 
-  // Keep the shop's buttons in step with the treasury while it's open.
+  // Keep the shop's buttons, prices and boost timers in step with the war while it's open.
   function updateResearch() {
     const me = Game.state.empires[S.me], card = $("modalCard");
     const money = $("shopMoney");
     if (money) money.textContent = fmt(me.money);
-    for (const b of card.querySelectorAll("[data-tech], [data-pack]")) b.disabled = me.money < +b.dataset.cost;
+    for (const b of card.querySelectorAll("[data-tech], [data-pack], [data-op], [data-boost], [data-crate]")) b.disabled = me.money < +b.dataset.cost;
+    for (const n of card.querySelectorAll(".tnode.open")) n.classList.toggle("poor", me.money < Game.techCost(S.me, n.dataset.node));
+    for (const el of card.querySelectorAll("[data-left]")) {
+      const left = Game.boostLeft(S.me, el.dataset.left), text = left > 0 ? `Active · ${fmtTime(left)} left` : "";
+      if (el.textContent !== text) el.textContent = text;
+      el.closest(".shop-card").classList.toggle("active", left > 0);
+    }
     const build = card.querySelector('[data-m="buildnuke"]');
     if (build) build.disabled = me.money < Game.nukeCost() || me.nukes >= WD.RULES.nukeMax;
     const launch = card.querySelector('[data-m="launch"]');
     if (launch) launch.disabled = me.nukes < 1;
+  }
+
+  // Running boosts and the time they have left, in a strip under the top bar.
+  function renderBoosts() {
+    const box = $("boosts");
+    const list = Object.keys(WD.BOOSTS).filter(id => WD.BOOSTS[id].secs && Game.boostLeft(S.me, id) > 0);
+    box.hidden = !list.length;
+    if (!list.length) return;
+    const html = list.map(id => `<span title="${esc(WD.BOOSTS[id].name)}">${WD.BOOSTS[id].icon} ${fmtTime(Game.boostLeft(S.me, id))}</span>`).join("");
+    if (box.innerHTML !== html) box.innerHTML = html;
+  }
+
+  // A special op lands on the nation picked on the map. It's only paid for if it goes ahead.
+  function useOp(id, c) {
+    act("useOp", id, c).then(r => {
+      if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); return; }
+      toast(r.text, "good");
+      Sound.play({ sabotage: "boom", orbital: "bigBoom", paratroopers: "jet", spy: "cash", coup: "capture" }[id] || "boom");
+      Map.flash(c);
+      updateHud();
+    });
   }
 
   // ---------- autopilot ----------
@@ -1851,9 +1938,14 @@ WD.UI = (() => {
         ${row("reinforce", "🚚 Auto-reinforce", "Idle troops in nations with no enemy next door march to threatened borders.", a.reinforce)}
         ${row("retake", "⚔ Auto-retake", "When you lose a nation, nearby troops strike back if they can win it.", a.retake)}
         ${row("caretaker", "🏦 Caretaker", "If you give no orders for a minute, the autopilot may also spend your savings on defense.", a.caretaker)}
+        <h4 class="auto-h">🧠 Smart troops</h4>
+        ${row("front", "🧭 Gather at the front", "Idle troops in nations surrounded by your own land march overland to your borders with enemy empires, wherever they can hold the line.", a.front)}
+        ${row("expand", "🏳 Take weak neighbors", "Border armies away from enemy empires capture independent nations next door, one at a time, with 2½ times the strength needed. A quarter stays home.", a.expand)}
+        ${row("attack", "🎯 Attack enemies", "The same against empires you're at war with, once the opening ceasefire is over, if the border can still hold afterwards.", a.attack)}
+        ${row("retreat", "↩ Pull out of lost battles", "An attack facing more than 2½ times its strength comes home before it's wiped out.", a.retreat)}
       </div>
       <div class="auto-stats"><div><b>$${fmt(st.spent || 0)}</b><span>Spent</span></div><div><b>${fmt(st.recruited || 0)}</b><span>Recruited</span></div>
-        <div><b>${fmt(st.moved || 0)}</b><span>Troops sent</span></div><div><b>${st.retaken || 0}</b><span>Won back</span></div></div>
+        <div><b>${fmt(st.moved || 0)}</b><span>Troops sent</span></div><div><b>${(st.retaken || 0) + (st.taken || 0)}</b><span>Nations taken</span></div></div>
       <div class="foot"><button class="primary" data-m="close">Done</button></div>`);
     autoBudgetLabel(a.budget);
   }
@@ -1870,6 +1962,10 @@ WD.UI = (() => {
       reinforce: card.querySelector('[data-auto="reinforce"]').checked,
       retake: card.querySelector('[data-auto="retake"]').checked,
       caretaker: card.querySelector('[data-auto="caretaker"]').checked,
+      front: card.querySelector('[data-auto="front"]').checked,
+      expand: card.querySelector('[data-auto="expand"]').checked,
+      attack: card.querySelector('[data-auto="attack"]').checked,
+      retreat: card.querySelector('[data-auto="retreat"]').checked,
     };
     act("setAutopilot", cfg).then(r => {
       if (!r.ok) { toast(r.reason, "bad"); return; }
@@ -2060,6 +2156,39 @@ WD.UI = (() => {
           toast(`📦 ${p.name} delivered to ${nameOf(r.at)}.`, "good");
           Sound.play("cash");
           Map.flash(r.at);
+        }
+        if (S.modal === "research") openResearch();
+      });
+      return;
+    }
+    // A technology in the research tree: show it below the tree.
+    if (b.dataset.node) {
+      S.techSel = b.dataset.node;
+      for (const n of $("modalCard").querySelectorAll(".tnode")) n.classList.toggle("sel", n.dataset.node === S.techSel);
+      $("modalCard").querySelector(".tech-info").innerHTML = techInfo(Game.state.empires[S.me], S.techSel);
+      updateResearch();
+      return;
+    }
+    // A special op: close the shop and pick its target on the map.
+    if (b.dataset.op) { closeModal(); setAction("op:" + b.dataset.op); return; }
+    if (b.dataset.boost) {
+      b.disabled = true;
+      act("buyBoost", b.dataset.boost).then(r => {
+        if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); }
+        else { toast(r.text, "good"); Sound.play("research"); renderBoosts(); }
+        if (S.modal === "research") openResearch();
+      });
+      return;
+    }
+    if (b.dataset.crate) {
+      b.disabled = true;
+      act("openCrate").then(r => {
+        if (!r.ok) { toast(r.reason, "bad"); Sound.play("error"); }
+        else {
+          S.crateNote = { text: r.text, rarity: r.rarity || "Common" };
+          toast(r.text, "good");
+          Sound.play(r.rarity === "Epic" || r.rarity === "Rare" ? "medal" : "cash");
+          renderBoosts();
         }
         if (S.modal === "research") openResearch();
       });

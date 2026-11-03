@@ -2,7 +2,7 @@
 window.WD = window.WD || {};
 
 // Multiplayer only connects players whose game files have the same version.
-WD.VERSION = "1.4";
+WD.VERSION = "1.5";
 WD.MAX_PLAYERS = 8;
 // Where the game is published online. Invite links point here when the game was opened from disk.
 WD.GAME_URL = "https://404hxlo.github.io/world-dominion/";
@@ -68,6 +68,15 @@ WD.RULES = {
   recruitTime: 240,        // seconds an empty nation takes to train up to that limit
   recruitTanks: 0.2,       // share of those recruits that are tanks, in nations worth recruitTankValue or more
   recruitTankValue: 4,
+  priceRise: 0.35,         // each purchase of a shop item you can buy again adds this share of its first price
+  sabotageKill: 0.4,       // share of the ground troops sabotage destroys (cyberSabotage with Cyber Warfare)
+  cyberSabotage: 0.6,
+  paraTroops: 25,          // infantry in a paratrooper drop
+  spySteal: 0.2,           // share of the target's treasury a spy mission takes (doubled by Cyber Warfare)
+  spyMax: 2000,            // most a spy mission can take (before Cyber Warfare and the game mode's economy)
+  spySecs: 120,            // seconds a spy mission shows the target empire's land through the fog
+  coupPerValue: 150,       // a coup costs this much more per point of the nation's economy
+  orbitalKill: 0.7,        // share of everything in the target nation an orbital strike destroys
   autoBudget: 0.2,         // default share of income the autopilot may spend on defenders
   autoFundSecs: 40,        // the autopilot saves at most this many seconds of its budget
   touchSecs: 45,           // the autopilot leaves nations you gave orders in alone this long

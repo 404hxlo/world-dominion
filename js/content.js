@@ -78,33 +78,89 @@ WD.perkFor = c => {
 };
 
 // ---------- research ----------
-// A tier opens once an empire owns `needs` technologies. Costs scale with the game mode's economy.
+// Research is a tree: six branches of up to four tiers. A technology opens once everything in its
+// `needs` is researched, and its tier sets the price (scaled by the game mode's economy).
+// players: only human players research it. The AI keeps to the original twelve, whose needs stay
+// among themselves.
 WD.TECH_TIERS = [
-  { name: "Tier I", cost: 450, needs: 0 },
-  { name: "Tier II", cost: 900, needs: 2 },
-  { name: "Tier III", cost: 1600, needs: 4 },
+  { name: "Tier I", cost: 450 },
+  { name: "Tier II", cost: 900 },
+  { name: "Tier III", cost: 1600 },
+  { name: "Tier IV", cost: 2600 },
+];
+WD.TECH_BRANCHES = [
+  { icon: "🪖", name: "Army" }, { icon: "⚡", name: "Armor" }, { icon: "✈️", name: "Air & Sea" },
+  { icon: "🛰️", name: "Intel" }, { icon: "🏭", name: "Economy" }, { icon: "🏰", name: "Defense" },
 ];
 WD.TECHS = {
-  conscription: { tier: 0, icon: "🪖", name: "Conscription", desc: "Infantry costs 30% less.", fx: { cheap: { inf: 0.3 } } },
-  blitz:        { tier: 0, icon: "⚡", name: "Blitzkrieg", desc: "Land armies march 30% faster.", fx: { speed: 0.3 } },
-  artillery:    { tier: 0, icon: "💥", name: "Precision Artillery", desc: "Artillery bombardment does twice the damage.", fx: { bombard: 1 } },
-  propaganda:   { tier: 0, icon: "📣", name: "Propaganda", desc: "Conquered nations pay full income twice as fast and rarely revolt.", fx: { integrate: 1, calm: 0.6 } },
-  armor:        { tier: 1, icon: "🛡️", name: "Heavy Armor", desc: "Tanks attack and defend 35% harder.", fx: { tank: 0.35 } },
-  marines:      { tier: 1, icon: "⚓", name: "Marines", desc: "Your sea landings fight at full strength, and troop transports sail at full speed.", fx: { marines: 1 } },
-  academy:      { tier: 1, icon: "🎖️", name: "Military Academy", desc: "New recruits arrive as 1-star veterans.", fx: { recruitVet: 1 } },
-  economy:      { tier: 1, icon: "🏭", name: "War Economy", desc: "+20% income.", fx: { income: 0.2 } },
-  stealth:      { tier: 2, icon: "🛩️", name: "Stealth Bombers", desc: "Air strikes slip past interceptors, hit 50% harder and fly 50% farther.", fx: { stealth: 1, airDamage: 0.5, airRange: 0.5 } },
-  shield:       { tier: 2, icon: "🛰️", name: "Missile Shield", desc: "Shoots down 75% of missiles and 50% of nukes aimed at your land.", fx: { shield: 0.75, nukeShield: 0.5 } },
-  satellites:   { tier: 2, icon: "📡", name: "Spy Satellites", desc: "See through the fog of war everywhere, and missiles reach any target on Earth.", fx: { satellites: 1 } },
-  nuclear:      { tier: 2, icon: "☢️", name: "Nuclear Program", desc: "Build nuclear warheads that can strike anywhere on Earth.", fx: { nuclear: 1 } },
+  conscription:  { tier: 0, col: 0, needs: [], icon: "🪖", name: "Conscription", desc: "Infantry costs 30% less.", fx: { cheap: { inf: 0.3 } } },
+  blitz:         { tier: 0, col: 1, needs: [], icon: "⚡", name: "Blitzkrieg", desc: "Land armies march 30% faster.", fx: { speed: 0.3 } },
+  artillery:     { tier: 0, col: 2, needs: [], icon: "💥", name: "Precision Artillery", desc: "Artillery bombardment does twice the damage.", fx: { bombard: 1 } },
+  propaganda:    { tier: 0, col: 4, needs: [], icon: "📣", name: "Propaganda", desc: "Conquered nations pay full income twice as fast and rarely revolt.", fx: { integrate: 1, calm: 0.6 } },
+  drill:         { tier: 0, col: 5, needs: [], icon: "🎓", name: "Drill Sergeants", desc: "Your nations train troops 50% faster.", fx: { train: 0.5 }, players: true },
+  academy:       { tier: 1, col: 0, needs: ["conscription"], icon: "🎖️", name: "Military Academy", desc: "New recruits arrive as 1-star veterans.", fx: { recruitVet: 1 } },
+  armor:         { tier: 1, col: 1, needs: ["blitz"], icon: "🛡️", name: "Heavy Armor", desc: "Tanks attack and defend 35% harder.", fx: { tank: 0.35 } },
+  marines:       { tier: 1, col: 2, needs: ["artillery"], icon: "⚓", name: "Marines", desc: "Your sea landings fight at full strength, and troop transports sail at full speed.", fx: { marines: 1 } },
+  economy:       { tier: 1, col: 4, needs: ["propaganda"], icon: "🏭", name: "War Economy", desc: "+20% income.", fx: { income: 0.2 } },
+  fortify:       { tier: 1, col: 5, needs: ["drill"], icon: "🏰", name: "Fortifications", desc: "All your nations defend 20% harder.", fx: { defense: 0.2 }, players: true },
+  hospitals:     { tier: 2, col: 0, needs: ["academy"], icon: "🏥", name: "Field Hospitals", desc: "Your troops take 25% less damage in battle.", fx: { tough: 0.25 }, players: true },
+  supply:        { tier: 2, col: 1, needs: ["armor"], icon: "🚚", name: "Supply Lines", desc: "A big empire loses only half as much income and training to overstretch.", fx: { logistics: 1 }, players: true },
+  stealth:       { tier: 2, col: 2, needs: ["marines"], icon: "🛩️", name: "Stealth Bombers", desc: "Air strikes slip past interceptors, hit 50% harder and fly 50% farther.", fx: { stealth: 1, airDamage: 0.5, airRange: 0.5 } },
+  satellites:    { tier: 2, col: 3, needs: ["economy"], icon: "📡", name: "Spy Satellites", desc: "See through the fog of war everywhere, and missiles reach any target on Earth.", fx: { satellites: 1 } },
+  nuclear:       { tier: 2, col: 4, needs: ["economy"], icon: "☢️", name: "Nuclear Program", desc: "Build nuclear warheads that can strike anywhere on Earth.", fx: { nuclear: 1 } },
+  shield:        { tier: 2, col: 5, needs: ["economy"], icon: "🛰️", name: "Missile Shield", desc: "Shoots down 75% of missiles and 50% of nukes aimed at your land.", fx: { shield: 0.75, nukeShield: 0.5 } },
+  supersoldiers: { tier: 3, col: 0, needs: ["hospitals"], icon: "🦾", name: "Super Soldiers", desc: "Infantry attack and defend 50% harder.", fx: { inf: 0.5 }, players: true },
+  mobilization:  { tier: 3, col: 1, needs: ["supply"], icon: "📯", name: "Total Mobilization", desc: "Each of your nations trains up to twice as many troops.", fx: { trainCap: 1 }, players: true },
+  orbital:       { tier: 3, col: 2, needs: ["stealth", "satellites"], icon: "🔆", name: "Orbital Laser", desc: "Unlocks the Orbital Strike special op: a beam from space that can hit anywhere on Earth.", fx: { orbital: 1 }, players: true },
+  cyber:         { tier: 3, col: 3, needs: ["satellites"], icon: "💻", name: "Cyber Warfare", desc: "Spy missions steal twice as much, and sabotage destroys 60% instead of 40%.", fx: { cyber: 1 }, players: true },
+  ironcurtain:   { tier: 3, col: 5, needs: ["shield"], icon: "🧱", name: "Iron Curtain", desc: "Invaders in your land lose 3% of their troops every second.", fx: { attrition: 0.03 }, players: true },
 };
 WD.TECH_IDS = Object.keys(WD.TECHS);
 
 // Shop packs: ready-made forces delivered to your capital, at a markup over the units' price.
+// Like everything in the shop you can buy again, each one costs more every time you buy it.
+// players: human players only. coastal: delivered to a coastal nation.
 WD.PACKS = {
   battalion: { icon: "🎖️", name: "Veteran Battalion", desc: "20 infantry and 5 tanks with 2-star crews.", units: { inf: 20, tank: 5 }, vet: 2, markup: 1.25 },
   airwing:   { icon: "✈️", name: "Air Wing", desc: "6 aircraft with veteran pilots.", units: { air: 6 }, vet: 1, markup: 1.15 },
   battery:   { icon: "🚀", name: "Missile Battery", desc: "3 long-range missiles, ready to fire.", units: { mis: 3 }, vet: 0, markup: 1.1 },
+  armored:   { icon: "🛡️", name: "Armored Division", desc: "15 tanks with 1-star crews.", units: { tank: 15 }, vet: 1, markup: 1.2, players: true },
+  brigade:   { icon: "💥", name: "Artillery Brigade", desc: "12 artillery guns to shell your neighbors.", units: { art: 12 }, vet: 0, markup: 1.15, players: true },
+  fleet:     { icon: "⚓", name: "Battle Fleet", desc: "8 warships with 1-star crews, delivered to a coastal nation.", units: { ship: 8 }, vet: 1, markup: 1.15, coastal: true, players: true },
+  mercs:     { icon: "💰", name: "Mercenary Legion", desc: "50 infantry at a bargain price. No questions asked.", units: { inf: 50 }, vet: 0, markup: 0.85, players: true },
+  grandarmy: { icon: "🏆", name: "Grand Army", desc: "80 infantry, 25 tanks and 10 artillery with 2-star crews.", units: { inf: 80, tank: 25, art: 10 }, vet: 2, markup: 1.3, players: true },
+};
+
+// Special ops: one-shot moves aimed at a nation on the map (human players only).
+// cost: the first price (scaled by the game mode's economy). needs: a research that unlocks it.
+WD.OPS = {
+  sabotage:     { icon: "🧨", name: "Sabotage", cost: 500, desc: "Blow up 40% of the troops in an enemy or independent nation, anywhere in the world.", hint: "an enemy or independent nation to sabotage" },
+  paratroopers: { icon: "🪂", name: "Paratroopers", cost: 600, desc: "Drop 25 veteran infantry on an enemy or independent nation within air range of your land. They attack at once.", hint: "a nation within air range to drop paratroopers on" },
+  spy:          { icon: "🕵️", name: "Spy Mission", cost: 400, desc: "Steal 20% of an enemy empire's treasury and see all its land through the fog of war for 2 minutes.", hint: "a nation of an empire you're at war with to spy on" },
+  coup:         { icon: "🎭", name: "Coup", cost: 300, desc: "An independent nation and its army switch to your side. Bigger economies cost more.", hint: "an independent nation to take over (bigger ones cost more)" },
+  orbital:      { icon: "🔆", name: "Orbital Strike", cost: 1500, needs: "orbital", desc: "A laser from space destroys 70% of everything in any enemy nation on Earth. Nothing can stop it.", hint: "any enemy nation on Earth for the orbital strike" },
+};
+
+// Boosts: timed bonuses for your whole empire (buying one again adds time), plus the emergency
+// draft, which fills every barracks at once. Human players only.
+WD.BOOSTS = {
+  income:  { icon: "💰", name: "Income Rush", cost: 500, secs: 120, desc: "+50% income for 2 minutes.", fx: { income: 0.5 } },
+  train:   { icon: "🪖", name: "Double Training", cost: 400, secs: 180, desc: "Your nations train troops twice as fast for 3 minutes.", fx: { train: 1 } },
+  fortify: { icon: "🏰", name: "Hold the Line", cost: 500, secs: 120, desc: "All your nations defend 30% harder for 2 minutes.", fx: { defense: 0.3 } },
+  march:   { icon: "🥾", name: "Forced March", cost: 350, secs: 120, desc: "Your armies march 50% faster for 2 minutes.", fx: { speed: 0.5 } },
+  draft:   { icon: "📯", name: "Emergency Draft", cost: 600, desc: "Every one of your nations trains up to its limit right now." },
+};
+
+// The mystery crate: one random reward. chance: how often each kind turns up.
+WD.CRATE = {
+  icon: "🎁", name: "Mystery Crate", cost: 500,
+  desc: "A random reward: cash or troops, a boost, a free supply pack, or (rarely) free research.",
+  odds: [
+    { rarity: "Epic", chance: 0.07 },        // free research of a technology you can open
+    { rarity: "Rare", chance: 0.18 },        // a free supply pack
+    { rarity: "Uncommon", chance: 0.30 },    // a random boost
+    { rarity: "Common", chance: 0.45 },      // cash or reinforcements
+  ],
 };
 
 // ---------- AI leaders ----------

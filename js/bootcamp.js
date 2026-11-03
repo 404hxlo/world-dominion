@@ -15,7 +15,7 @@ WD.Bootcamp = (() => {
   const remember = v => { try { localStorage.setItem(KEY, v); } catch { /* storage blocked */ } };
   const val = (x, c) => (typeof x === "function" ? x(c) : x);
 
-  // hooks: ctx() -> { G, me, selected, hover, frac, modal, action, touch, target, radar }, beacon(c), show(c, zoom),
+  // hooks: ctx() -> { G, me, selected, hover, frac, modal, action, touch, target, radar, shopTab, techSel }, beacon(c), show(c, zoom),
   // fold(on) (upright phones: shrink the panel sheet), contract(c), sound(name), complete(first) -> experience paid,
   // finish(how), invite() -> room code or ""
   function init(world, h) {
@@ -84,10 +84,14 @@ WD.Bootcamp = (() => {
         target: c => (c.touch ? (c.target === ES ? '#targetCard [data-tc="air"]' : null)
           : c.selected === FR && c.action !== "air" ? '#panel [data-act="mode"][data-v="air"]' : null),
         done: () => !!st.air },
-      { title: "The Shop", text: c => (st.tech ? "Researched! Close the Shop to carry on."
-          : c.modal === "research" ? `Research upgrades your whole empire for the rest of the war. ${Click(c)} <b>Buy</b> under <b>Blitzkrieg</b>.`
-          : `Here's $600 of war funds. Open the <b>Shop</b> (${c.touch ? "the gold 🛒 button" : "<kbd>U</kbd>, or the gold button"} at the top) and research <b>Blitzkrieg</b>.`),
-        target: c => (st.tech ? "#modalCard [data-m=close]" : c.modal === "research" ? '#modalCard [data-tech="blitz"]' : "#btnTech"),
+      // The shop opens on the research tree: pick Blitzkrieg in it, then research it.
+      { title: "The Shop", text: c => (st.tech ? "Researched! The Shop also sells supply packs, special ops and boosts. Close it to carry on."
+          : c.modal !== "research" ? `Here's $600 of war funds. Open the <b>Shop</b> (${c.touch ? "the gold 🛒 button" : "<kbd>U</kbd>, or the gold button"} at the top) and research <b>Blitzkrieg</b>.`
+          : c.shopTab !== "tree" ? `${Click(c)} the <b>🔬 Research</b> tab.`
+          : c.techSel !== "blitz" ? `This is the research tree: each upgrade opens the ones below it. ${Click(c)} <b>⚡ Blitzkrieg</b> at the top of the Armor branch.`
+          : `Research lasts for the rest of the war. ${Click(c)} <b>Research</b>.`),
+        target: c => (st.tech ? "#modalCard [data-m=close]" : c.modal !== "research" ? "#btnTech"
+          : c.shopTab !== "tree" ? '#modalCard [data-tab="tree"]' : c.techSel !== "blitz" ? '#modalCard [data-node="blitz"]' : '#modalCard [data-tech="blitz"]'),
         enter: c => { c.me.money += 600; st.techs = c.me.tech.length; },
         watch: c => { if (c.me.tech.length > st.techs) st.tech = true; },
         done: c => !!st.tech && !c.modal },

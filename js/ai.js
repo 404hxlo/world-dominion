@@ -159,10 +159,20 @@ WD.AI = (() => {
   }
 
   // ---------- research and warheads: save up for a goal, unless the homeland is in danger ----------
+  // The AI keeps to the original technologies (players-only ones are off limits) and walks the
+  // research tree toward the ones its leader likes: if a favorite isn't open yet, it researches
+  // what that favorite needs first.
   function nextTech(e) {
     const P = persona(e);
-    const open = WD.TECH_IDS.filter(id => !e.tech.includes(id) && !Game.techLocked(e.id, id) && (id !== "nuclear" || P.nuke >= 0.5));
-    return P.research.find(id => open.includes(id)) || pick(open) || null;
+    const wanted = id => !WD.TECHS[id].players && !e.tech.includes(id) && (id !== "nuclear" || P.nuke >= 0.5);
+    const toward = id => {
+      if (!wanted(id)) return null;
+      if (!Game.techLocked(e.id, id)) return id;
+      for (const n of WD.TECHS[id].needs) { const step = toward(n); if (step) return step; }
+      return null;
+    };
+    for (const id of P.research) { const step = toward(id); if (step) return step; }
+    return pick(WD.TECH_IDS.filter(id => wanted(id) && !Game.techLocked(e.id, id))) || null;
   }
 
   function invest(e, diff, frontier, info) {
