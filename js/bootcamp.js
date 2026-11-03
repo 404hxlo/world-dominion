@@ -67,7 +67,7 @@ WD.Bootcamp = (() => {
         done: c => mine(c, BE) || c.G.sieges[BE].some(s => s.owner === c.me.id) || c.G.armies.some(a => a.owner === c.me.id && a.path[a.path.length - 1] === BE) },
       { title: "Into battle", text: "Your army marches to Belgium and fights as soon as it arrives. The badge shows defenders ⚔ attackers. Beat every defender to take the nation.", country: BE,
         done: c => mine(c, BE) },
-      { title: "Conquered!", text: "Belgium is yours. Every nation you hold pays into your <b>treasury</b> (at the top), and big economies pay the most. Money buys armies.", target: ".hud-money", next: true },
+      { title: "Conquered!", text: "Belgium is yours. Every nation you hold pays into your <b>treasury</b> (at the top) and trains troops on its own, and big economies give the most. Money buys more.", target: ".hud-money", next: true },
       { title: "Contracts", country: LU, view: [LU, 6],
         text: c => (c.touch
           ? "<b>Contracts</b> pay cash for goals. Take <b>Luxembourg</b> for $300: tap <b>Belgium</b> (your army is there), then <b>Luxembourg</b>, then <b>⚔ Attack</b>."

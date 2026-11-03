@@ -620,6 +620,7 @@ WD.UI = (() => {
       <div class="p-sec"><h5 class="tools">${mine
         ? `<span>Garrison · <span class="mouse-only">click</span><span class="touch-only">tap</span> to recruit</span><span class="seg buy-n touch-only">${[1, 5, 10].map(n => `<button data-act="buyn" data-v="${n}">×${n}</button>`).join("")}</span>`
         : "Defenders"}</h5><div class="units-grid">${cards}</div>
+        ${mine ? `<div class="militia-line recruit-line" data-dyn="recruits"></div>` : ""}
         <div class="militia-line" data-dyn="militia"></div></div>`;
     if (mine) {
       const fr = [[0.25, "25%"], [0.5, "50%"], [0.75, "75%"], [1, "All"]]
@@ -678,6 +679,13 @@ WD.UI = (() => {
     if (mine && Game.integration(c) < 1) notes.push(`🏗 Integrating: pays ${Math.round(Game.integration(c) * 100)}% of its income.`);
     setDyn("note", notes.map(n => `<div>${n}</div>`).join(""));
     if (mine) {
+      // The troops this nation trains on its own, and how close it is to its limit.
+      const have = U.count(u, WD.ARMY_TYPES), cap = Game.recruitCap(c), perMin = Game.recruitRate(c) * 60;
+      const fill = `<b>${Math.floor(have)} / ${Math.floor(cap)}</b>`;
+      setDyn("recruits", Game.cache.rad.has(c) ? `<span>🪖 No training while radioactive</span>`
+        : G.sieges[c].length ? `<span>🪖 Training paused by the battle</span>${fill}`
+        : have >= cap - 0.5 ? `<span>🪖 Barracks full · send troops out to train more</span>${fill}`
+        : `<span>🪖 Trains troops on its own · +${perMin < 10 ? perMin.toFixed(1) : Math.round(perMin)} a minute</span>${fill}`);
       const money = G.empires[S.me].money, rad = Game.cache.rad.has(c);
       for (const b of panel.querySelectorAll('[data-act="buy"]')) {
         const t = b.dataset.t;

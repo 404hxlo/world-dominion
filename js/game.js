@@ -740,6 +740,29 @@ WD.Game = (() => {
     }
   }
 
+  // Every empire's nations also train troops on their own, ready to march: infantry everywhere and
+  // some tanks in big economies. A nation trains up to a limit, so sending its troops to the front
+  // makes room for more. Training pauses during a battle there and stops while it's radioactive,
+  // and like income it starts slow in a newly conquered nation. Overstretched empires train far
+  // less (efficiency squared), so a runaway empire can't drown the map in free troops.
+  const recruitCap = c => (R.recruitBase + R.recruitPerValue * W.countries[c].value) * mode().neutral;
+  // Troops a nation trains per second while it's below its limit.
+  function recruitRate(c) {
+    const o = G.owner[c];
+    if (o < 0 || cache.rad.has(c)) return 0;
+    const k = empire(o).human ? 1 : diff().income;
+    return recruitCap(c) / R.recruitTime * integration(c) * efficiency(o) ** 2 * mode().income * k;
+  }
+  function recruits(dt) {
+    for (let c = 0; c < G.owner.length; c++) {
+      if (G.owner[c] < 0 || G.sieges[c].length) continue;
+      const n = Math.min(recruitCap(c) - U.count(G.units[c], WD.ARMY_TYPES), recruitRate(c) * dt);
+      if (n <= 0) continue;
+      const tanks = W.countries[c].value >= R.recruitTankValue ? n * R.recruitTanks : 0;
+      addTroops(c, { inf: n - tanks, tank: tanks });
+    }
+  }
+
   // ---------- recruiting & research ----------
   function buy(owner, c, type, n = 1) {
     const e = empire(owner), unit = UNITS[type];
@@ -1269,6 +1292,7 @@ WD.Game = (() => {
     battles(dt);
     neutralRegen(dt);
     militia(dt);
+    recruits(dt);
     diplomacyDrift(dt);
     WD.AI.tick(dt);
     WD.Autopilot.tick(dt);
@@ -1381,7 +1405,7 @@ WD.Game = (() => {
     U, on, emit, newGame, load, serialize, serializeCompact, tick, clear,
     setAway, applySnapshot, extrapolate, announce, tell, news, banner, mark,
     sendArmy, buy, launchAir, launchMissile, toggleBombard, preview, armyEta,
-    research, buildNuke, launchNuke, answerOffer, offer, buyPack, packCost, setAutopilot, asAutopilot, noteOrder, militiaCap,
+    research, buildNuke, launchNuke, answerOffer, offer, buyPack, packCost, setAutopilot, asAutopilot, noteOrder, militiaCap, recruitCap, recruitRate,
     propose, answerProposal, declareWar, setRelation,
     relation, relSince, isHostile, isFriendly, opinion, addOpinion, locked,
     power, shareBorder, worldShare, incomeOf, efficiency, integration, mobilization, findPath, findPathTo, edgeOf, dist,

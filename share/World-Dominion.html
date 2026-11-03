@@ -432,6 +432,8 @@ body.fx-off .route, body.fx-off .preview { animation: none; }
 .vet { color: var(--gold-2); letter-spacing: -1px; }
 .militia-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 9px; border-radius: 6px; font-size: 11.5px; color: var(--muted); background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.12); }
 .militia-line b { font: 400 12.5px var(--display); color: #cfe8ff; }
+.recruit-line { border-color: rgba(255, 210, 102, 0.25); }
+.recruit-line b { color: var(--gold-2); }
 .perk-line { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.45; margin: 4px 0 6px; }
 .perk-line b { color: var(--text); }
 .leader-line { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
@@ -1384,6 +1386,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
         <li><b>Capitals</b> (★) defend harder. Take an enemy capital to loot half its treasury and split its empire in a civil war. Guard yours!</li>
         <li>Armies that win battles earn up to 3 <b>veteran stars</b> and fight harder. Fresh recruits dilute them.</li>
         <li><b>U</b> opens the Shop: research that applies instantly, up to the Nuclear Program, and ready-made forces delivered to your capital. <b>N</b> fires a nuke, but the whole world will turn on you.</li>
+        <li>Every nation you hold <b>trains troops on its own</b> (🪖 in the panel), faster in big economies, up to a limit per nation. Send them to the front and more arrive. Buying is still the fastest way to grow an army.</li>
         <li>Your nations raise free <b>militia</b> (🛡) that guard them. The <b>Autopilot</b> (P) spends part of your income on defenders where attacks are coming, moves idle troops to threatened borders and strikes back at lost nations.</li>
         <li>Complete <b>contracts</b> (bottom right) for cash. Watch the world news for disasters, revolutions, arms deals and coups.</li>
         <li>With <b>fog of war</b> on, enemy troops show as ? until your land, armies or aircraft are close.</li>
@@ -1435,7 +1438,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 window.WD = window.WD || {};
 
 // Multiplayer only connects players whose game files have the same version.
-WD.VERSION = "1.3";
+WD.VERSION = "1.4";
 WD.MAX_PLAYERS = 8;
 // Where the game is published online. Invite links point here when the game was opened from disk.
 WD.GAME_URL = "https://404hxlo.github.io/world-dominion/";
@@ -1496,6 +1499,11 @@ WD.RULES = {
   militiaBase: 3,          // militia a nation raises: (base + perValue * value), less while it integrates
   militiaPerValue: 3,
   militiaRate: 0.025,      // share of the militia cap raised per second
+  recruitBase: 3,          // troops a nation trains on its own, up to (base + perValue * value)
+  recruitPerValue: 4,
+  recruitTime: 240,        // seconds an empty nation takes to train up to that limit
+  recruitTanks: 0.2,       // share of those recruits that are tanks, in nations worth recruitTankValue or more
+  recruitTankValue: 4,
   autoBudget: 0.2,         // default share of income the autopilot may spend on defenders
   autoFundSecs: 40,        // the autopilot saves at most this many seconds of its budget
   touchSecs: 45,           // the autopilot leaves nations you gave orders in alone this long
@@ -3037,6 +3045,29 @@ WD.Game = (() => {
     }
   }
 
+  // Every empire's nations also train troops on their own, ready to march: infantry everywhere and
+  // some tanks in big economies. A nation trains up to a limit, so sending its troops to the front
+  // makes room for more. Training pauses during a battle there and stops while it's radioactive,
+  // and like income it starts slow in a newly conquered nation. Overstretched empires train far
+  // less (efficiency squared), so a runaway empire can't drown the map in free troops.
+  const recruitCap = c => (R.recruitBase + R.recruitPerValue * W.countries[c].value) * mode().neutral;
+  // Troops a nation trains per second while it's below its limit.
+  function recruitRate(c) {
+    const o = G.owner[c];
+    if (o < 0 || cache.rad.has(c)) return 0;
+    const k = empire(o).human ? 1 : diff().income;
+    return recruitCap(c) / R.recruitTime * integration(c) * efficiency(o) ** 2 * mode().income * k;
+  }
+  function recruits(dt) {
+    for (let c = 0; c < G.owner.length; c++) {
+      if (G.owner[c] < 0 || G.sieges[c].length) continue;
+      const n = Math.min(recruitCap(c) - U.count(G.units[c], WD.ARMY_TYPES), recruitRate(c) * dt);
+      if (n <= 0) continue;
+      const tanks = W.countries[c].value >= R.recruitTankValue ? n * R.recruitTanks : 0;
+      addTroops(c, { inf: n - tanks, tank: tanks });
+    }
+  }
+
   // ---------- recruiting & research ----------
   function buy(owner, c, type, n = 1) {
     const e = empire(owner), unit = UNITS[type];
@@ -3566,6 +3597,7 @@ WD.Game = (() => {
     battles(dt);
     neutralRegen(dt);
     militia(dt);
+    recruits(dt);
     diplomacyDrift(dt);
     WD.AI.tick(dt);
     WD.Autopilot.tick(dt);
@@ -3678,7 +3710,7 @@ WD.Game = (() => {
     U, on, emit, newGame, load, serialize, serializeCompact, tick, clear,
     setAway, applySnapshot, extrapolate, announce, tell, news, banner, mark,
     sendArmy, buy, launchAir, launchMissile, toggleBombard, preview, armyEta,
-    research, buildNuke, launchNuke, answerOffer, offer, buyPack, packCost, setAutopilot, asAutopilot, noteOrder, militiaCap,
+    research, buildNuke, launchNuke, answerOffer, offer, buyPack, packCost, setAutopilot, asAutopilot, noteOrder, militiaCap, recruitCap, recruitRate,
     propose, answerProposal, declareWar, setRelation,
     relation, relSince, isHostile, isFriendly, opinion, addOpinion, locked,
     power, shareBorder, worldShare, incomeOf, efficiency, integration, mobilization, findPath, findPathTo, edgeOf, dist,
@@ -6314,7 +6346,7 @@ WD.Bootcamp = (() => {
         done: c => mine(c, BE) || c.G.sieges[BE].some(s => s.owner === c.me.id) || c.G.armies.some(a => a.owner === c.me.id && a.path[a.path.length - 1] === BE) },
       { title: "Into battle", text: "Your army marches to Belgium and fights as soon as it arrives. The badge shows defenders ⚔ attackers. Beat every defender to take the nation.", country: BE,
         done: c => mine(c, BE) },
-      { title: "Conquered!", text: "Belgium is yours. Every nation you hold pays into your <b>treasury</b> (at the top), and big economies pay the most. Money buys armies.", target: ".hud-money", next: true },
+      { title: "Conquered!", text: "Belgium is yours. Every nation you hold pays into your <b>treasury</b> (at the top) and trains troops on its own, and big economies give the most. Money buys more.", target: ".hud-money", next: true },
       { title: "Contracts", country: LU, view: [LU, 6],
         text: c => (c.touch
           ? "<b>Contracts</b> pay cash for goals. Take <b>Luxembourg</b> for $300: tap <b>Belgium</b> (your army is there), then <b>Luxembourg</b>, then <b>⚔ Attack</b>."
@@ -7895,6 +7927,7 @@ WD.UI = (() => {
       <div class="p-sec"><h5 class="tools">${mine
         ? `<span>Garrison · <span class="mouse-only">click</span><span class="touch-only">tap</span> to recruit</span><span class="seg buy-n touch-only">${[1, 5, 10].map(n => `<button data-act="buyn" data-v="${n}">×${n}</button>`).join("")}</span>`
         : "Defenders"}</h5><div class="units-grid">${cards}</div>
+        ${mine ? `<div class="militia-line recruit-line" data-dyn="recruits"></div>` : ""}
         <div class="militia-line" data-dyn="militia"></div></div>`;
     if (mine) {
       const fr = [[0.25, "25%"], [0.5, "50%"], [0.75, "75%"], [1, "All"]]
@@ -7953,6 +7986,13 @@ WD.UI = (() => {
     if (mine && Game.integration(c) < 1) notes.push(`🏗 Integrating: pays ${Math.round(Game.integration(c) * 100)}% of its income.`);
     setDyn("note", notes.map(n => `<div>${n}</div>`).join(""));
     if (mine) {
+      // The troops this nation trains on its own, and how close it is to its limit.
+      const have = U.count(u, WD.ARMY_TYPES), cap = Game.recruitCap(c), perMin = Game.recruitRate(c) * 60;
+      const fill = `<b>${Math.floor(have)} / ${Math.floor(cap)}</b>`;
+      setDyn("recruits", Game.cache.rad.has(c) ? `<span>🪖 No training while radioactive</span>`
+        : G.sieges[c].length ? `<span>🪖 Training paused by the battle</span>${fill}`
+        : have >= cap - 0.5 ? `<span>🪖 Barracks full · send troops out to train more</span>${fill}`
+        : `<span>🪖 Trains troops on its own · +${perMin < 10 ? perMin.toFixed(1) : Math.round(perMin)} a minute</span>${fill}`);
       const money = G.empires[S.me].money, rad = Game.cache.rad.has(c);
       for (const b of panel.querySelectorAll('[data-act="buy"]')) {
         const t = b.dataset.t;

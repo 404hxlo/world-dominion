@@ -2,7 +2,7 @@
 window.WD = window.WD || {};
 
 // Multiplayer only connects players whose game files have the same version.
-WD.VERSION = "1.3";
+WD.VERSION = "1.4";
 WD.MAX_PLAYERS = 8;
 // Where the game is published online. Invite links point here when the game was opened from disk.
 WD.GAME_URL = "https://404hxlo.github.io/world-dominion/";
@@ -63,6 +63,11 @@ WD.RULES = {
   militiaBase: 3,          // militia a nation raises: (base + perValue * value), less while it integrates
   militiaPerValue: 3,
   militiaRate: 0.025,      // share of the militia cap raised per second
+  recruitBase: 3,          // troops a nation trains on its own, up to (base + perValue * value)
+  recruitPerValue: 4,
+  recruitTime: 240,        // seconds an empty nation takes to train up to that limit
+  recruitTanks: 0.2,       // share of those recruits that are tanks, in nations worth recruitTankValue or more
+  recruitTankValue: 4,
   autoBudget: 0.2,         // default share of income the autopilot may spend on defenders
   autoFundSecs: 40,        // the autopilot saves at most this many seconds of its budget
   touchSecs: 45,           // the autopilot leaves nations you gave orders in alone this long
